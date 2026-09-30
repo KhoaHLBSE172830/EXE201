@@ -1,23 +1,30 @@
-### AL ###
-#Template for AL projects for Dynamics 365 Business Central
-#launch.json folder
-.vscode/
-#Cache folder
-.alcache/
-#Symbols folder
-.alpackages/
-#Snapshots folder
-.snapshots/
-#Testing Output folder
-.output/
-#Extension App-file
-*.app
-#Rapid Application Development File
-rad.json
-#Translation Base-file
-*.g.xlf
-#License-files
-*.bclicense
-*.flf
-#Test results file
-TestResults.xml
+# ===================================================
+# Root .gitignore for EXE201 Monorepo / Multi-project
+# ===================================================
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# Common IDE / Editor configs
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln.docstates
+*.user
+*.userosscache
+
+# Temporary and Log files
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Note: Specific ignore rules are located inside each project folder:
+# - Mimo_EXE201_BE/.gitignore (Backend: .NET / C# / Visual Studio)
+# - Mimo_EXE201_FE/.gitignore (Frontend: React / Vite / Next.js / Node.js)
