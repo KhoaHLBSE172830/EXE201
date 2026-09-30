@@ -1,43 +1,4 @@
-## ===================================================
-## Frontend (Node.js / React / Next.js / Vite / Vue) .gitignore
-## ===================================================
-
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
-
-# Production build artifacts
-dist/
-dist-ssr/
-build/
-out/
-.next/
-.nuxt/
-.output/
-.vuepress/dist
-.serverless/
-
-# Cache directories
-.cache/
-.parcel-cache/
-.eslintcache
-.stylelintcache
-.prettiercache
-.turbo/
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-.tsbuildinfo
-*.tsbuildinfo
-
-# Debug & Logs
+# Logs
 logs
 *.log
 npm-debug.log*
@@ -46,42 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment variables & secrets
-.env
-.env*.local
-.env.development.local
-.env.test.local
-.env.production.local
-# Do not ignore template env file
-!.env.example
-!.env.template
-
-# Testing & Coverage
-coverage/
-*.lcov
-.nyc_output
-cypress/videos
-cypress/screenshots
-.playwright/
-test-results/
+node_modules
+dist
+dist-ssr
+*.local
 
 # Editor directories and files
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
 !.vscode/extensions.json
-.idea/
+.idea
+.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-Thumbs.db
-ehthumbs.db
-[Dd]esktop.ini

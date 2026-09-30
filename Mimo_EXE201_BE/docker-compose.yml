@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mimo_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mimo_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mimo_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mimo_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: mimo_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - mimo_network
+
+  mimo-api:
+    image: mimo-api
+    container_name: mimo_api
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Mimo.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-mimo_db};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgrespassword}
+      - ConnectionStrings__Redis=redis:6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - mimo_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  mimo_network:
+    driver: bridge

@@ -74,6 +74,9 @@ packages/
 appsettings*.local.json
 *.local.json
 secrets.json
+.env
+.env.*
+!.env.example
 
 # Operating System Files
 .DS_Store
