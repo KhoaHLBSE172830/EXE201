@@ -12,6 +12,9 @@ public class MimoDbContext : DbContext
     {
     }
 
+    public DbSet<User> Users { get; set; } = null!;
+    public DbSet<Organization> Organizations { get; set; } = null!;
+
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -34,5 +37,18 @@ public class MimoDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MimoDbContext).Assembly);
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasIndex(u => u.Email).IsUnique();
+            entity.Property(u => u.Role).HasConversion<string>();
+            entity.Property(u => u.Status).HasConversion<string>();
+        });
+
+        modelBuilder.Entity<Organization>(entity =>
+        {
+            entity.HasIndex(o => o.Code).IsUnique();
+            entity.Property(o => o.Status).HasConversion<string>();
+        });
     }
 }

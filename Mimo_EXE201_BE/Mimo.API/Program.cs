@@ -1,4 +1,5 @@
 using Microsoft.OpenApi.Models;
+using Mimo.API.Middlewares;
 using Mimo.Application;
 using Mimo.Infrastructure;
 
@@ -53,11 +54,25 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Global Exception Handling Middleware
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    // Tự động khởi tạo cấu trúc bảng nếu chưa tồn tại
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Mimo.Infrastructure.Database.MimoDbContext>();
+        db.Database.EnsureCreated();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Chưa thể kết nối PostgreSQL để EnsureCreated: {Message}", ex.Message);
+    }
 }
 
 app.UseCors("AllowAll");

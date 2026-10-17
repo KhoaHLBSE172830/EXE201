@@ -1,0 +1,133 @@
+﻿1. Build MVP (Nam - Khoa - Kiệt)
+1. Product/UI/UX
+2. Frontend/Backend
+2. Build Tiktok Channel (Hoàng)
+1. Mục tiêu → Build awareness & recognition for Mimo
+Không bán app ngay vì MVP chưa hoàn thiện.
+2. Công việc
+1. Xây dựng channel               
+* Tạo TikTok Business/Creator account
+* Avatar/logo Mimo
+* Username thống nhất với Facebook
+* Bio
+* Link/CTA phù hợp với giai đoạn pre-launch
+2. Content
+Phụ trách sản xuất video:
+* "Bạn sẽ làm gì?"
+*  
+* Traffic safety scenarios
+* First-aid scenarios
+* Fire safety
+* Scam awareness
+* Behind the scenes
+* Mimo development journey
+3. Deliverables
+Mỗi tuần:
+* 2–3 TikTok videos
+* 1 content calendar
+* Theo dõi views / likes / comments / shares / followers
+* Tổng hợp feedback người xem
+
+
+3. Build Facebook Channel (Nhật)
+1. Mục tiêu → Build trust + explain what Mimo is
+Facebook nên thiên về educational + brand building, đặc biệt phù hợp để tiếp cận phụ huynh, giáo viên và những người quan tâm đến giáo dục.
+2. Công việc
+A. Xây dựng Facebook Page
+* Page name
+* Username
+* Profile/cover
+* About
+* Description
+* Contact information
+* Brand guideline cơ bản
+B. Content
+Phụ trách:
+* Educational posts
+* Mimo introduction (What is Skillo?)
+* Development journey (From idea → prototype)
+* Problem awareness (Why do students need practical life-skill training?)
+* Team / startup story (Meet the team behind Mimo)
+* Coming soon (Mimo is coming soon).
+3. Deliverables
+Mỗi tuần:
+* 3 Facebook posts
+* 1 Facebook content calendar
+* Community engagement
+* Theo dõi reach / engagement / followers / comments
+IV. Marketing & Growth Lead (Tiến)
+1.  Marketing strategy
+Xác định: Target audience
+* Primary audience: Students (học sinh mầm non, cấp 1&2)
+* Secondary audience: Parents
+* Potential B2B audience: Schools
+→ Brand positioning: Mimo— Learn life skills through real-life simulations.
+2. Content strategy
+Content Calendar:
+
+
+Ngày
+	TikTok
+	Facebook
+	Mon
+	Traffic scenario
+	Educational post
+	Tue
+	—
+	—
+	Wed
+	First-aid quiz
+	Skillo concept
+	Thu
+	BTS development
+	—
+	Fri
+	Scam scenario
+	Educational post
+	Sat
+	Team/BTS
+	—
+	Sun
+	—
+	Coming soon
+	
+
+
+
+3. Analytics
+
+
+KPI
+	TikTok
+	Facebook
+	Reach
+	
+
+	
+
+	Views
+	
+
+	
+
+	Engagement
+	
+
+	
+
+	Followers
+	
+
+	
+
+	Profile visits
+	
+
+	
+
+	Shares
+	
+
+	
+
+	Comments

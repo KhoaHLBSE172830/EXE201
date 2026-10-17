@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './MimoLandingPage.css';
 
-const MimoLandingPage = ({ onStart, onRegisterClick }) => {
+const MimoLandingPage = ({ onStart, onRegisterClick, onLoginClick }) => {
   const [selectedOption, setSelectedOption] = useState(null);
 
   const handleOptionSelect = (id) => {
@@ -26,8 +26,8 @@ const MimoLandingPage = ({ onStart, onRegisterClick }) => {
             <a href="#">Về Mimo</a>
           </nav>
           <div className="landing-actions">
-            <a href="#" className="login-link" onClick={(e) => { e.preventDefault(); onStart(); }}>Đăng nhập</a>
-            <button className="btn-primary" onClick={onStart}>Bắt đầu</button>
+            <a href="#" className="login-link" onClick={(e) => { e.preventDefault(); if (onLoginClick) onLoginClick(); else onStart(); }}>Đăng nhập</a>
+            <button className="btn-primary" onClick={onRegisterClick}>Bắt đầu</button>
           </div>
         </header>
 
@@ -38,7 +38,7 @@ const MimoLandingPage = ({ onStart, onRegisterClick }) => {
             <p>Mimo giúp bạn luyện cách ra quyết định trong các tình huống như tai nạn giao thông, hỏa hoạn, sơ cứu và bạo lực học đường/gia đình. Sau mỗi lựa chọn, AI sẽ phân tích, phản hồi và hướng dẫn cách xử lý đúng.</p>
             <div className="hero-buttons">
               <button className="btn-primary" onClick={onRegisterClick}>Bắt đầu miễn phí →</button>
-              <button className="btn-secondary" onClick={onStart}>Tôi đã có tài khoản</button>
+              <button className="btn-secondary" onClick={() => { if (onLoginClick) onLoginClick(); else onStart(); }}>Tôi đã có tài khoản</button>
             </div>
             <div className="hero-features">
               <div className="hero-feature-item">

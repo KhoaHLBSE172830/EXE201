@@ -33,10 +33,14 @@ public class JwtService : IJwtService
         {
             Subject = new ClaimsIdentity(new[]
             {
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                new Claim("userId", userId.ToString()),
                 new Claim("sessionId", sessionId.ToString()),
                 new Claim("status", status.ToString()),
                 new Claim("email", email),
-                new Claim("role", role)
+                new Claim(ClaimTypes.Email, email),
+                new Claim("role", role),
+                new Claim(ClaimTypes.Role, role)
             }),
             Issuer = userId.ToString(),
             Expires = DateTime.UtcNow.AddSeconds(exp),

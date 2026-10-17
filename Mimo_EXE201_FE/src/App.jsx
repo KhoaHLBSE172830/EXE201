@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import MimoDashboard from './components/MimoDashboard';
 import MimoLandingPage from './components/MimoLandingPage';
 import MimoRegisterPage from './components/MimoRegisterPage';
+import MimoLoginPage from './components/MimoLoginPage';
 import './App.css'; 
 
 function App() {
-  const [currentView, setCurrentView] = useState('landing'); // 'landing', 'register', 'dashboard'
+  const [currentView, setCurrentView] = useState('landing'); // 'landing', 'register', 'dashboard', 'login'
 
   return (
     <>
@@ -14,7 +15,16 @@ function App() {
       {currentView === 'register' && (
         <MimoRegisterPage 
           onRegisterSuccess={() => setCurrentView('dashboard')}
-          onLoginClick={() => setCurrentView('dashboard')} // For now, login just goes to dashboard
+          onLoginClick={() => setCurrentView('login')}
+          onHomeClick={() => setCurrentView('landing')}
+        />
+      )}
+
+      {currentView === 'login' && (
+        <MimoLoginPage 
+          onLoginSuccess={() => setCurrentView('dashboard')}
+          onRegisterClick={() => setCurrentView('register')}
+          onHomeClick={() => setCurrentView('landing')}
         />
       )}
       
@@ -22,6 +32,7 @@ function App() {
         <MimoLandingPage 
           onStart={() => setCurrentView('dashboard')} 
           onRegisterClick={() => setCurrentView('register')}
+          onLoginClick={() => setCurrentView('login')}
         />
       )}
     </>

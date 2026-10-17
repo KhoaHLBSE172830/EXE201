@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './MimoRegisterPage.css';
 
-const MimoRegisterPage = ({ onRegisterSuccess, onLoginClick }) => {
+const MimoRegisterPage = ({ onRegisterSuccess, onLoginClick, onHomeClick }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -15,7 +15,7 @@ const MimoRegisterPage = ({ onRegisterSuccess, onLoginClick }) => {
     <div className="mimo-register-page">
       {/* Header */}
       <header className="register-header">
-        <a href="#" className="register-logo" onClick={(e) => { e.preventDefault(); onLoginClick(); }}>
+        <a href="#" className="register-logo" onClick={(e) => { e.preventDefault(); if (onHomeClick) onHomeClick(); }}>
           <div className="register-logo-icon">🤖</div>
           mimo
         </a>
