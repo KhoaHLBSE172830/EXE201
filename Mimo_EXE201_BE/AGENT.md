@@ -12,6 +12,25 @@
 ### 1.1. Bối cảnh dự án
 MIMO là nền tảng học kỹ năng sống và phản xạ an toàn khẩn cấp (Sơ cấp cứu, PCCC & Thoát hiểm, An toàn số & Chống lừa đảo, An toàn giao thông, Sức khỏe tinh thần) ứng dụng triệt để mô hình Micro-learning kết hợp Gamification mô phỏng Duolingo. Hệ thống biến lý thuyết khô khan thành các quyết định tình huống thực chiến 2–3 phút, kích thích người học qua các cơ chế Tim (Hearts), Chuỗi ngày (Streak), Điểm kinh nghiệm (XP), Cấp độ (Levels) và Bảng xếp hạng tuần (Weekly Leagues).
 
+### 1.2. Hệ thống Phân quyền 5 Roles (RBAC)
+Hệ thống có **5 Vai trò người dùng độc lập** được định danh bằng GUID chuẩn:
+
+| Enum Value | Role Name | GUID Seed | Mô tả |
+|---|---|---|---|
+| `Admin = 1` | Admin | `11111111-1111-1111-1111-111111111111` | Chủ hệ thống / Quản trị viên tối cao |
+| `Student = 2` | Student | `22222222-2222-2222-2222-222222222222` | Người học (Learner) — B2C & B2B end-user |
+| `Curator = 3` | Curator | `33333333-3333-3333-3333-333333333333` | Chuyên gia biên soạn nội dung độc lập |
+| `Organization = 4` | Organization | `44444444-4444-4444-4444-444444444444` | Ban giám hiệu / Quản lý nhà trường B2B |
+| `Educator = 5` | Educator | `55555555-5555-5555-5555-555555555555` | Giáo viên trực thuộc trường học |
+
+**Nguồn chân lý:** `Mimo.DomainLayer.Enum.GeneralEnum.UserRoleEnum`  
+**Seed tự động:** `DatabaseSeeder.SeedRolesAsync()` khi khởi động môi trường Development.
+
+> [!IMPORTANT]
+> - **Admin**: Hệ thống chỉ cho phép **DUY NHẤT 1 Admin** — enforced bằng Partial Unique Index PostgreSQL trên cột `RoleId`.
+> - **Educator** khác **Curator**: Educator thuộc biên chế một trường cụ thể (`OrganizationId` NOT NULL), Curator hoạt động độc lập với mọi trường (`OrganizationId` có thể NULL).
+> - **Không thể tự đăng ký với Role Admin** — enforced trong `AuthService.RegisterAsync()` và `RegisterRequestValidator`.
+
 ### 1.2. Vai trò của Agent
 Khi tiếp nhận và thực thi các task mã nguồn, Agent đóng vai trò là một **Senior .NET Backend Architect & Lead Developer**. Agent có trách nhiệm:
 - Tuân thủ nghiêm ngặt nguyên lý SOLID, mô hình phân lớp cô lập của Onion Architecture.
@@ -95,98 +114,152 @@ Hệ thống được module hóa thành 4 phân lớp theo nguyên lý Dependen
 
 ## 4. LƯỢC ĐỒ DỮ LIỆU POSTGRESQL (SCHEMA SPECIFICATION)
 
-Quy chuẩn: Tên bảng và cột dùng `snake_case`. Primary Key sử dụng `uuid` (UUIDv4) hoặc `bigserial` cho bảng log lớn.
+Quy chuẩn: Tên bảng C# Entity dùng `PascalCase` (EF Core tự map sang `snake_case` bằng `UseSnakeCaseNamingConvention` nếu bật, hoặc dùng `[Table("...")] attribute`). Primary Key `Guid` (UUID) — tự sinh tại client trước khi Insert.
+
+> [!NOTE]
+> **Mapping thực tế DB**: Xem `Mimo.Infrastructure/Database/MimoDbContext.cs` và `Mimo.Domain/Entities/`. Phần schema bên dưới mô tả **thiết kế mục tiêu** cho Gameplay Engine (Phase 1 MVP). Các bảng đã migrate sẵn (✅) và các bảng cần tạo mới (🔲) được đánh dấu rõ ràng.
 
 ### 4.1. Phân hệ Tài khoản & Phân quyền (Auth & RBAC)
-* **`users`**
-  - `id (UUID, PK)`: Định danh người dùng.
-  - `email (VARCHAR(255), UNIQUE, NOT NULL)`: Địa chỉ email.
-  - `password_hash (VARCHAR(255), NULL)`: Mã băm mật khẩu (null đối với tài khoản chỉ dùng Google OAuth).
-  - `role (VARCHAR(50), NOT NULL)`: `Student`, `Curator`, `Organization`, `Admin`.
-  - `status (VARCHAR(20), NOT NULL, DEFAULT 'Active')`: `Active`, `Banned`, `PendingApproval`.
-  - `timezone (VARCHAR(50), NOT NULL, DEFAULT 'Asia/Ho_Chi_Minh')`: Múi giờ người dùng.
-  - `total_xp (INT, NOT NULL, DEFAULT 0)`: Tổng XP tích lũy (Indexed).
-  - `created_at (TIMESTAMPTZ, NOT NULL)`, `updated_at (TIMESTAMPTZ, NOT NULL)`.
-* **`user_profiles`**
-  - `user_id (UUID, PK, FK -> users.id ON DELETE CASCADE)`.
-  - `full_name (VARCHAR(150), NOT NULL)`.
-  - `avatar_url (TEXT, NULL)`.
-  - `daily_goal_minutes (INT, NOT NULL, DEFAULT 10)`: Mục tiêu hàng ngày (5, 10, 15 phút).
-  - `risk_survey_result (JSONB, NULL)`: Khảo sát nhận diện rủi ro ban đầu lúc onboarding.
-* **`user_stats`**
-  - `user_id (UUID, PK, FK -> users.id ON DELETE CASCADE)`.
-  - `hearts (INT, NOT NULL, DEFAULT 5, CHECK: hearts >= 0 AND hearts <= 5)`: Số tim hiện có.
-  - `hearts_updated_at (TIMESTAMPTZ, NOT NULL)`: Mốc thời gian gần nhất tính toán phục hồi tim.
-  - `streak (INT, NOT NULL, DEFAULT 0)`: Số ngày chuỗi liên tiếp.
-  - `last_active_date (DATE, NULL)`: Ngày học gần nhất tính theo múi giờ user (`YYYY-MM-DD`).
-  - `streak_freeze_count (INT, NOT NULL, DEFAULT 0)`: Số bùa bảo vệ chuỗi đang sở hữu.
-  - `is_pro (BOOLEAN, NOT NULL, DEFAULT FALSE)`: Trạng thái gói Mimo Pro (vô hạn tim).
-  - `pro_expires_at (TIMESTAMPTZ, NULL)`: Hạn dùng Pro.
-  - `xmin (Postgres System Column)`: Dùng cho Optimistic Concurrency Control.
+
+#### ✅ Bảng `Roles` (Entity: `Role.cs`)
+- `Id (UUID, PK)`: Định danh vai trò.
+- `RoleName (VARCHAR(20), UNIQUE, NOT NULL)`: `Admin`, `Student`, `Curator`, `Organization`, `Educator`.
+- `Description (VARCHAR(100), NULL)`: Mô tả vai trò.
+- `Status (VARCHAR, NOT NULL, DEFAULT Active)`: Enum `RoleStatusEnum`.
+- `CreatedAt`, `UpdatedAt (TIMESTAMPTZ, NOT NULL)`: Từ `BaseEntity`.
+
+#### ✅ Bảng `Users` (Entity: `User.cs`)
+- `Id (UUID, PK)`: Định danh người dùng.
+- `RoleId (UUID, FK → Roles.Id, NOT NULL)`: Phân quyền qua quan hệ FK, **không lưu string tên role**.
+- `OrganizationId (UUID, FK → Organizations.Id, NULL)`: Liên kết trường — bắt buộc với Educator, tùy chọn với Student.
+- `Name (VARCHAR(50), NOT NULL)`: Họ và tên đầy đủ (`NotMapped` alias: `FullName`).
+- `UserName (VARCHAR(40), UNIQUE, NULL)`: Tên đăng nhập.
+- `Email (VARCHAR, UNIQUE, NOT NULL)`: Email đăng nhập.
+- `Password (VARCHAR(200), NOT NULL)`: BCrypt hash (`NotMapped` alias: `PasswordHash`).
+- `Phone (VARCHAR(11), NULL)` (`NotMapped` alias: `PhoneNumber`).
+- `Avatar (VARCHAR(1000), NULL)` (`NotMapped` alias: `AvatarUrl`).
+- `AuthType (VARCHAR(50), DEFAULT 'Local')`: `Local` hoặc `Google`.
+- `RefreshToken (VARCHAR(255), NULL)`, `RefreshTokenExpiryTime (TIMESTAMPTZ, NULL)`.
+- `Timezone (VARCHAR(50), DEFAULT 'Asia/Ho_Chi_Minh')`.
+- `TotalXp (INT, DEFAULT 0)`: Cache/Snapshot tổng XP — phải đồng bộ với `SUM(xp_events.amount)`.
+- `Status (VARCHAR, DEFAULT Active)`: Enum `UserStatusEnum`.
+- `LastLogin (TIMESTAMPTZ, NULL)`.
+- **Partial Unique Index PostgreSQL**: `UNIQUE` trên `RoleId` với `WHERE RoleId = '11111111-...'` — đảm bảo **chỉ 1 Admin duy nhất** toàn hệ thống.
+
+#### ✅ Bảng `UserProfiles` (Entity: `UserProfile.cs`) — quan hệ 1-1 với Users
+- `UserId (UUID, PK, FK → Users.Id ON DELETE CASCADE)`.
+- `FullName (VARCHAR(150), NOT NULL)`.
+- `AvatarUrl (TEXT, NULL)`.
+- `DailyGoalMinutes (INT, DEFAULT 10)`: Mục tiêu học (5, 10, 15 phút).
+- `RiskSurveyResult (JSONB, NULL)`: Kết quả khảo sát nhận diện rủi ro onboarding.
+
+#### ✅ Bảng `UserStats` (Entity: `UserStats.cs`) — quan hệ 1-1 với Users
+- `UserId (UUID, PK, FK → Users.Id ON DELETE CASCADE)`.
+- `Hearts (INT, DEFAULT 5, CHECK 0-5)`: Số tim hiện tại.
+- `HeartsUpdatedAt (TIMESTAMPTZ)`: Mốc tính Lazy Heart Regeneration.
+- `Streak (INT, DEFAULT 0)`: Chuỗi ngày liên tiếp.
+- `LastActiveDate (DATE, NULL)`: Ngày học gần nhất theo múi giờ user.
+- `StreakFreezeCount (INT, DEFAULT 0)`: Số bùa bảo vệ Streak.
+- `IsPro (BOOLEAN, DEFAULT false)`: Tài khoản Mimo Pro (vô hạn tim).
+- `ProExpiresAt (TIMESTAMPTZ, NULL)`: Thời hạn Pro.
+
+> [!IMPORTANT]
+> `UserStats.CalculateCurrentHearts(DateTime currentUtc)` đã được implement **sẵn trong Domain Entity** — đây là Lazy Regeneration không cần Background Worker. Agent **PHẢI** gọi method này thay vì tự tính lại.
+
+#### ✅ Bảng `Organizations` (Entity: `Organization.cs`)
+- Đại diện trường học / tổ chức B2B. FK từ `Users.OrganizationId`.
+- Chứa `Code (VARCHAR, UNIQUE)`: Mã tổ chức dùng để Student/Educator gia nhập qua API Register.
+
+---
 
 ### 4.2. Cấu trúc Cây Kỹ năng & Nội dung Học (Content Domain)
-* **`domains`**
-  - `id (UUID, PK)`, `name (VARCHAR(100), NOT NULL)`, `slug (VARCHAR(100), UNIQUE, NOT NULL)`.
-  - `icon_url (TEXT, NULL)`, `order (INT, NOT NULL, DEFAULT 1)`, `status (VARCHAR(20), NOT NULL, DEFAULT 'Active')`.
-* **`units`**
-  - `id (UUID, PK)`, `domain_id (UUID, FK -> domains.id, NOT NULL)`.
-  - `title (VARCHAR(150), NOT NULL)`, `description (TEXT, NULL)`, `order (INT, NOT NULL)`.
-* **`nodes`**
-  - `id (UUID, PK)`, `unit_id (UUID, FK -> units.id, NOT NULL)`.
-  - `title (VARCHAR(150), NOT NULL)`.
-  - `type (VARCHAR(30), NOT NULL)`: `lesson` (bài học chuẩn), `chest` (rương thưởng), `boss` (thử thách chặng).
-  - `order (INT, NOT NULL)`.
-  - `unlock_rule (JSONB, NULL)`: Quy tắc mở khóa (vd: `{"prerequisite_node_id": "uuid-here"}`).
-  - `xp_reward (INT, NOT NULL, DEFAULT 10)`: Điểm XP thưởng khi hoàn thành node.
-* **`questions`**
-  - `id (UUID, PK)`.
-  - `type (VARCHAR(30), NOT NULL)`: `choice` (Quyết định tình huống), `sequence` (Sắp xếp quy trình), `red_flag` (Vạch lá tìm sâu).
-  - `title (TEXT, NOT NULL)`: Nội dung tình huống / câu hỏi.
-  - `image_url (TEXT, NULL)`: Ảnh hoặc GIF minh họa tình huống.
-  - `payload (JSONB, NOT NULL)`: Chứa các options hiển thị cho client (KHÔNG chứa trường đáp án đúng).
-  - `correct_data (JSONB, NOT NULL)`: Dữ liệu thẩm định đáp án đúng lưu nội bộ server.
-  - `explanation (TEXT, NOT NULL)`: Lời giải thích y tế/an toàn chi tiết sau khi trả lời.
-  - `difficulty (VARCHAR(20), NOT NULL, DEFAULT 'Medium')`: `Easy`, `Medium`, `Hard`.
-  - `source (VARCHAR(255), NULL)`: Nguồn tham chiếu chuyên môn (Bộ Y tế, Cục Cảnh sát PCCC...).
-  - `reviewed_by (VARCHAR(150), NULL)`: Chuyên gia duyệt nội dung.
-  - `status (VARCHAR(20), NOT NULL, DEFAULT 'Published')`.
-* **`node_questions`**
-  - `node_id (UUID, FK -> nodes.id)`, `question_id (UUID, FK -> questions.id)`.
-  - `order (INT, NOT NULL)`.
-  - `PRIMARY KEY (node_id, question_id)`.
+
+> [!WARNING]
+> **Các bảng sau (4.2) CHƯA ĐƯỢC TẠO MIGRATION** — đây là thiết kế cần tạo Entity mới trong Phase 1 Gameplay Engine. Trước khi implement Task B1-B5, Agent BẮT BUỘC tạo đủ các Entity này và chạy `dotnet ef migrations add`.
+
+#### 🔲 Bảng `Domains` (Entity mới: `Domain.cs`)
+- `Id (UUID, PK)`, `Name (VARCHAR(100), NOT NULL)`, `Slug (VARCHAR(100), UNIQUE, NOT NULL)`.
+- `IconUrl (TEXT, NULL)`, `Order (INT, NOT NULL, DEFAULT 1)`, `Status (VARCHAR(20), DEFAULT 'Active')`.
+- **5 Chủ đề cốt lõi**: Sơ cấp cứu, PCCC & Thoát hiểm, An toàn giao thông, An toàn số, Sức khỏe tinh thần.
+
+#### 🔲 Bảng `Units` (Entity mới: `Unit.cs`) — Chặng kỹ năng
+- `Id (UUID, PK)`, `DomainId (UUID, FK → Domains.Id, NOT NULL)`.
+- `Title (VARCHAR(150), NOT NULL)`, `Description (TEXT, NULL)`, `Order (INT, NOT NULL)`.
+
+#### 🔲 Bảng `Nodes` (Entity mới: `Node.cs`) — Nút bài học trên Skill Tree
+- `Id (UUID, PK)`, `UnitId (UUID, FK → Units.Id, NOT NULL)`.
+- `Title (VARCHAR(150), NOT NULL)`.
+- `Type (VARCHAR(30), NOT NULL)`: `lesson` | `chest` (rương thưởng) | `boss` (thử thách chặng).
+- `Order (INT, NOT NULL)`: Thứ tự trong unit.
+- `UnlockRule (JSONB, NULL)`: Quy tắc mở khóa, vd: `{ "prerequisite_node_id": "uuid" }`.
+- `XpReward (INT, DEFAULT 10)`: XP thưởng khi hoàn thành node.
+
+#### 🔲 Bảng `Questions` (Entity mới: `Question.cs`) — Ngân hàng câu hỏi tình huống
+- `Id (UUID, PK)`.
+- `Type (VARCHAR(30), NOT NULL)`: `choice` | `sequence` | `red_flag`.
+- `Title (TEXT, NOT NULL)`: Nội dung tình huống.
+- `ImageUrl (TEXT, NULL)`: Ảnh/GIF minh họa.
+- `Payload (JSONB, NOT NULL)`: **Dữ liệu gửi về client — TUYỆT ĐỐI KHÔNG chứa đáp án đúng.**
+- `CorrectData (JSONB, NOT NULL)`: Dữ liệu đáp án đúng — **CHỈ tồn tại tại server, không bao giờ serialize về client.**
+- `Explanation (TEXT, NOT NULL)`: Giải thích chuyên môn sau khi học sinh trả lời.
+- `Difficulty (VARCHAR(20), DEFAULT 'Medium')`: `Easy` | `Medium` | `Hard`.
+- `Source (VARCHAR(255), NULL)`: Nguồn tham chiếu (Bộ Y tế, Cục PCCC...).
+- `ReviewedBy (VARCHAR(150), NULL)`: Chuyên gia duyệt.
+- `Status (VARCHAR(20), DEFAULT 'Published')`.
+
+#### 🔲 Bảng `NodeQuestions` (Entity mới: `NodeQuestion.cs`) — Pivot
+- `NodeId (UUID, FK → Nodes.Id)`, `QuestionId (UUID, FK → Questions.Id)`.
+- `Order (INT, NOT NULL)`: Thứ tự câu hỏi trong bài học.
+- `PRIMARY KEY (NodeId, QuestionId)`.
+
+---
 
 ### 4.3. Gameplay Engine, Luyện tập & Sổ cái XP
-* **`user_node_progress`**
-  - `id (UUID, PK)`, `user_id (UUID, FK -> users.id)`, `node_id (UUID, FK -> nodes.id)`.
-  - `status (VARCHAR(20), NOT NULL)`: `locked`, `current`, `done`.
-  - `completed_at (TIMESTAMPTZ, NULL)`.
-  - `UNIQUE (user_id, node_id)`.
-* **`lesson_sessions`**
-  - `id (UUID, PK)`, `user_id (UUID, FK -> users.id)`, `node_id (UUID, FK -> nodes.id)`.
-  - `status (VARCHAR(20), NOT NULL, DEFAULT 'in_progress')`: `in_progress`, `completed`, `failed`.
-  - `hearts_lost (INT, NOT NULL, DEFAULT 0)`.
-  - `total_xp_earned (INT, NOT NULL, DEFAULT 0)`.
-  - `started_at (TIMESTAMPTZ, NOT NULL)`, `expires_at (TIMESTAMPTZ, NOT NULL)`, `completed_at (TIMESTAMPTZ, NULL)`.
-* **`session_answers`**
-  - `id (UUID, PK)`, `session_id (UUID, FK -> lesson_sessions.id)`, `question_id (UUID, FK -> questions.id)`.
-  - `submitted_answer (JSONB, NOT NULL)`, `is_correct (BOOLEAN, NOT NULL)`.
-  - `time_spent_seconds (INT, NOT NULL)`.
-  - `xp_earned (INT, NOT NULL, DEFAULT 0)`.
-  - `idempotency_key (VARCHAR(100), NULL)`.
-  - `created_at (TIMESTAMPTZ, NOT NULL)`.
-  - `UNIQUE (session_id, question_id)`.
-* **`wrong_questions`**
-  - `id (UUID, PK)`, `user_id (UUID, FK -> users.id)`, `question_id (UUID, FK -> questions.id)`.
-  - `times_wrong (INT, NOT NULL, DEFAULT 1)`.
-  - `resolved_at (TIMESTAMPTZ, NULL)`.
-  - `last_attempt_at (TIMESTAMPTZ, NOT NULL)`.
-  - `UNIQUE (user_id, question_id)`.
-* **`xp_events` (Append-Only Event Ledger)**
-  - `id (BIGSERIAL, PK)`, `user_id (UUID, FK -> users.id, NOT NULL, Indexed)`.
-  - `amount (INT, NOT NULL)`.
-  - `source (VARCHAR(50), NOT NULL)`: `lesson_correct`, `combo_bonus`, `perfect_lesson`, `chest_reward`, `practice_reward`.
-  - `reference_id (UUID, NULL)`.
-  - `created_at (TIMESTAMPTZ, NOT NULL, Indexed)`.
+
+> [!WARNING]
+> Tất cả các bảng trong Section 4.3 đều **CHƯA CÓ ENTITY/MIGRATION** và cần được tạo trước khi triển khai Task B1-B5.
+
+#### 🔲 Bảng `UserNodeProgresses` (Entity mới: `UserNodeProgress.cs`)
+- `Id (UUID, PK)`, `UserId (UUID, FK → Users.Id)`, `NodeId (UUID, FK → Nodes.Id)`.
+- `Status (VARCHAR(20), NOT NULL)`: `locked` | `current` | `done`.
+- `CompletedAt (TIMESTAMPTZ, NULL)`.
+- `UNIQUE (UserId, NodeId)`.
+
+#### 🔲 Bảng `LessonSessions` (Entity mới: `LessonSession.cs`) — State Machine phiên học
+- `Id (UUID, PK)`, `UserId (UUID, FK → Users.Id)`, `NodeId (UUID, FK → Nodes.Id)`.
+- `Status (VARCHAR(20), DEFAULT 'in_progress')`: `in_progress` | `completed` | `failed`.
+- `HeartsLost (INT, DEFAULT 0)`: Số tim đã mất trong phiên.
+- `TotalXpEarned (INT, DEFAULT 0)`: Tổng XP kiếm được trong phiên.
+- `StartedAt (TIMESTAMPTZ, NOT NULL)`, `ExpiresAt (TIMESTAMPTZ, NOT NULL)` *(= StartedAt + 30 phút)*.
+- `CompletedAt (TIMESTAMPTZ, NULL)`.
+
+> [!CAUTION]
+> Phiên học có TTL 30 phút. Nếu `ExpiresAt < UtcNow` khi nhận answer request → mark `failed` và từ chối chấm điểm. **Không được extend thời gian phiên.**
+
+#### 🔲 Bảng `SessionAnswers` (Entity mới: `SessionAnswer.cs`)
+- `Id (UUID, PK)`, `SessionId (UUID, FK → LessonSessions.Id)`, `QuestionId (UUID, FK → Questions.Id)`.
+- `SubmittedAnswer (JSONB, NOT NULL)`: Đáp án học sinh gửi lên.
+- `IsCorrect (BOOLEAN, NOT NULL)`: Kết quả chấm.
+- `TimeSpentSeconds (INT, NOT NULL)`: Thời gian trả lời.
+- `XpEarned (INT, DEFAULT 0)`: XP cộng cho câu này (bao gồm combo nếu có).
+- `IdempotencyKey (VARCHAR(100), NULL)`: Guard chống submit trùng.
+- `CreatedAt (TIMESTAMPTZ, NOT NULL)`.
+- `UNIQUE (SessionId, QuestionId)`: Mỗi câu chỉ được nộp 1 lần trong 1 phiên.
+
+#### 🔲 Bảng `WrongQuestions` (Entity mới: `WrongQuestion.cs`)
+- `Id (UUID, PK)`, `UserId (UUID, FK → Users.Id)`, `QuestionId (UUID, FK → Questions.Id)`.
+- `TimesWrong (INT, DEFAULT 1)`: Số lần làm sai lũy kế.
+- `ResolvedAt (TIMESTAMPTZ, NULL)`: NULL = chưa ôn xong; NOT NULL = đã trả lời đúng trong Practice.
+- `LastAttemptAt (TIMESTAMPTZ, NOT NULL)`.
+- `UNIQUE (UserId, QuestionId)`: Upsert — tăng `TimesWrong` nếu đã tồn tại.
+
+#### 🔲 Bảng `XpEvents` (Entity mới: `XpEvent.cs`) — Append-Only Ledger
+- `Id (BIGINT / BIGSERIAL, PK)`: Auto-increment, không dùng UUID.
+- `UserId (UUID, FK → Users.Id, NOT NULL, Indexed)`.
+- `Amount (INT, NOT NULL)`: Lượng XP thay đổi (luôn dương).
+- `Source (VARCHAR(50), NOT NULL)`: `lesson_correct` | `combo_bonus` | `perfect_lesson` | `chest_reward` | `practice_reward`.
+- `ReferenceId (UUID, NULL)`: FK mềm trỏ đến SessionId hoặc NodeId nguồn gốc.
+- `CreatedAt (TIMESTAMPTZ, NOT NULL, Indexed)`.
 
 ---
 
@@ -265,25 +338,37 @@ Mọi lỗi nghiệp vụ hoặc exception hệ thống phải được chuyển
 ```
 
 ### 6.2. Danh mục Endpoints Cốt lõi Phase 1 (MVP)
+
+#### ✅ Đã implement (Controller hiện có)
 * **Auth & Profiles:**
-  - `POST /api/v1/auth/register`: Đăng ký tài khoản email + mật khẩu.
-  - `POST /api/v1/auth/login`: Xác thực và trả JWT Pair (Access + Refresh).
+  - `POST /api/v1/auth/register`: Đăng ký tài khoản email + mật khẩu (hỗ trợ 4 Role: Student, Curator, Organization, Educator).
+  - `POST /api/v1/auth/login`: Xác thực và trả JWT Pair (Access Token + Refresh Token).
   - `POST /api/v1/auth/google`: Tiếp nhận Google ID Token từ FE, verify bằng `Google.Apis.Auth`, tạo user nếu chưa có và phát hành JWT.
-  - `POST /api/v1/auth/refresh-token`: Cấp mới Access Token bằng Refresh Token.
-  - `GET /api/v1/users/me`: Lấy thông tin cá nhân, cấp độ hiện tại, số tim, streak.
-  - `PATCH /api/v1/users/me/onboarding`: Cập nhật mục tiêu học tập (5/10/15 phút) và kết quả khảo sát.
+  - `POST /api/v1/auth/refresh-token`: Cấp mới Access Token bằng Refresh Token còn hạn.
+  - `POST /api/v1/auth/logout`: Thu hồi session Redis và vô hiệu hóa Refresh Token.
+  - `POST /api/v1/auth/force-logout/{userId}`: **[Admin only]** Buộc đăng xuất mọi phiên của một user.
+  - `GET /api/v1/auth/admin-only`: Endpoint test quyền Admin.
+  - `GET /api/v1/auth/curator-only`: Endpoint test quyền Curator/Admin.
+  - `GET /api/v1/auth/organization-only`: Endpoint test quyền Organization/Admin.
+  - `GET /api/v1/auth/educator-only`: Endpoint test quyền Educator/Admin.
+  - `GET /api/v1/users/me`: Lấy thông tin cá nhân, level (dẫn xuất từ XP), số tim (Lazy Regen), streak.
+  - `PATCH /api/v1/users/me/onboarding`: Cập nhật mục tiêu học tập và kết quả khảo sát.
+  - `PUT /api/v1/users/me/profile`: Cập nhật họ tên, avatar, phone, timezone.
+  - `PUT /api/v1/users/me/change-password`: Đổi mật khẩu và tự động thu hồi session khác.
+
+#### 🔲 Cần implement (Phase 1 Gameplay Engine — Task B1-B5)
 * **Học liệu & Bản đồ Cây Kỹ Năng:**
   - `GET /api/v1/domains`: Danh sách 5 chủ đề lớn.
   - `GET /api/v1/path?domainId={id}`: Trả về cây lộ trình gồm các Node kèm trạng thái của người dùng (`locked`, `current`, `done`).
 * **Gameplay Engine:**
-  - `POST /api/v1/lessons/{nodeId}/start`: Kiểm tra tim $\ge 1$ hoặc Pro, khởi tạo session, trả về session ID và danh sách 10 câu hỏi (ẩn đáp án đúng).
-  - `POST /api/v1/sessions/{id}/answer`: Nhận payload `{ questionId, submittedAnswer }`, header `Idempotency-Key`. Thực hiện chấm điểm, trừ tim nếu sai, cộng XP + combo nếu đúng, trả về kết quả kèm `explanation`.
-  - `POST /api/v1/sessions/{id}/complete`: Tổng kết ván, cộng XP hoàn hảo (nếu không mất tim), cập nhật Streak, cập nhật tiến độ node sang `done` và mở khóa node liền kề.
+  - `POST /api/v1/lessons/{nodeId}/start`: Kiểm tra tim ≥ 1 hoặc Pro, khởi tạo `LessonSession` (TTL 30 phút), trả về session ID và danh sách 10 câu hỏi **không có đáp án đúng**.
+  - `POST /api/v1/sessions/{id}/answer`: Nhận `{ questionId, submittedAnswer }` + header `Idempotency-Key`. Chấm điểm 3 loại câu hỏi (choice/sequence/red_flag), trừ tim nếu sai, cộng XP + Combo nếu đúng, trả kết quả kèm `explanation`. Bọc trong DB Transaction.
+  - `POST /api/v1/sessions/{id}/complete`: Tổng kết phiên, thưởng Perfect (+5 XP nếu `hearts_lost == 0`), cập nhật tiến độ node `done`, mở khóa node tiếp theo, gọi `IStreakService.UpdateStreakAsync()`.
 * **Luyện tập (Practice):**
-  - `GET /api/v1/practice/wrong-questions`: Lấy danh sách câu sai chưa hoàn thành của user.
-  - `POST /api/v1/practice/answer`: Nộp đáp án ôn tập, nếu đúng hồi $+1\text{ Tim}$ và đánh dấu resolved.
+  - `GET /api/v1/practice/wrong-questions`: Lấy danh sách câu sai (`resolved_at IS NULL`) của user.
+  - `POST /api/v1/practice/answer`: Nộp đáp án ôn tập — nếu đúng: `resolved_at = UtcNow`, `hearts + 1`, `+5 XP` (`source = practice_reward`).
 * **Bảng xếp hạng (Weekly Leaderboard):**
-  - `GET /api/v1/leaderboard/current`: Trả về top 30 người có XP tuần cao nhất (tính từ 00:00 Thứ Hai theo giờ VN) kèm vị trí xếp hạng và XP của người dùng hiện tại.
+  - `GET /api/v1/leaderboard/current`: Top 30 user có XP tuần cao nhất (tính từ 00:00 Thứ Hai giờ VN) kèm vị trí của người dùng hiện tại.
 
 ---
 
@@ -318,8 +403,10 @@ Mỗi câu hỏi seed bắt buộc có đầy đủ: `title`, `type`, `payload`,
 ## 8. CHECKLIST KIỂM SOÁT CHẤT LƯỢNG KHI SINH MÃ (AGENT SELF-AUDIT)
 
 Trước khi cung cấp mã nguồn hoặc hoàn tất một chức năng, Agent phải tự kiểm tra:
-1. [ ] **Kiểm tra rò rỉ đáp án:** Các DTO gửi về client khi làm bài có bị vô tình serialize trường đáp án đúng không?
-2. [ ] **Kiểm tra tính toàn vẹn múi giờ:** Đã lưu `timestamptz` (UTC) và convert về múi giờ `Asia/Ho_Chi_Minh` khi tính ngày Streak chưa?
-3. [ ] **Kiểm tra sổ cái XP:** Điểm XP có được ghi nhận chi tiết vào `xp_events` không?
-4. [ ] **Kiểm tra Race Condition & Idempotency:** Thao tác trừ tim, cộng điểm, hoàn thành bài đã có transaction và khóa lạc quan/idempotency guard chưa?
+1. [ ] **Kiểm tra rò rỉ đáp án:** Các DTO gửi về client khi làm bài có bị vô tình serialize trường `CorrectData` / `correct_data` không? DTO trả lời chỉ được chứa `Payload` (options hiển thị), không được chứa đáp án.
+2. [ ] **Kiểm tra tính toàn vẹn múi giờ:** Đã lưu UTC và convert sang `Asia/Ho_Chi_Minh` khi tính `DateOnly` cho Streak chưa? Trên Linux dùng `TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh")`.
+3. [ ] **Kiểm tra sổ cái XP:** Mọi thay đổi XP đều ghi vào bảng `XpEvents` (Append-Only Ledger)? Không được UPDATE trực tiếp `Users.TotalXp` mà không ghi XpEvent kèm theo.
+4. [ ] **Kiểm tra Race Condition & Idempotency:** Thao tác trừ tim và cộng XP đã bọc trong `DbTransaction`? `SessionAnswers` đã có ràng buộc `UNIQUE(SessionId, QuestionId)`? `IdempotencyKey` header đã được kiểm tra trước khi chấm điểm?
 5. [ ] **Kiểm tra phụ thuộc tầng Onion:** Mã nguồn ở lớp Domain có vô tình phụ thuộc EF Core hay WebAPI không?
+6. [ ] **Kiểm tra RoleId FK:** Code mới khi cần kiểm tra role của user phải dùng `user.Role.RoleName` (sau Include FK) hoặc parse từ JWT Claim `payload.Role`, **không dùng enum index hardcode** như `roleId == 2` thay vì `UserRoleEnum.Student`.
+7. [ ] **Kiểm tra Entity còn thiếu:** Trước khi implement Gameplay Task B1-B5, xác nhận 7 Entity Gameplay (`Domain`, `Unit`, `Node`, `Question`, `NodeQuestion`, `LessonSession`, `SessionAnswer`, `WrongQuestion`, `XpEvent`, `UserNodeProgress`) đã được tạo Entity class và Migration thành công chưa?
