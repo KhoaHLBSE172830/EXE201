@@ -45,6 +45,7 @@ namespace Mimo.Infrastructure.Database
             {
                 await SeedRolesAsync();
                 await SeedAdminUserAsync();
+                await SeedGameplayTestDataAsync();
             }
             catch (Exception ex)
             {
@@ -196,6 +197,179 @@ namespace Mimo.Infrastructure.Database
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Lỗi khi đảm bảo Profile/Stats cho Admin: {Message}", ex.Message);
+            }
+        }
+
+        public static readonly Guid DefaultDomainId = Guid.Parse("a1111111-1111-1111-1111-111111111111");
+        public static readonly Guid DefaultUnitId = Guid.Parse("b1111111-1111-1111-1111-111111111111");
+        public static readonly Guid DefaultNode1Id = Guid.Parse("c1111111-1111-1111-1111-111111111111");
+        public static readonly Guid DefaultNode2Id = Guid.Parse("c2222222-2222-2222-2222-222222222222");
+
+        public static readonly Guid Question1Id = Guid.Parse("d1111111-1111-1111-1111-111111111111");
+        public static readonly Guid Question2Id = Guid.Parse("d2222222-2222-2222-2222-222222222222");
+        public static readonly Guid Question3Id = Guid.Parse("d3333333-3333-3333-3333-333333333333");
+
+        private async Task SeedGameplayTestDataAsync()
+        {
+            try
+            {
+                // 1. Seed Domain: Sơ cấp cứu ban đầu
+                var existingDomain = await _context.Domains.FirstOrDefaultAsync(d => d.Id == DefaultDomainId);
+                if (existingDomain == null)
+                {
+                    existingDomain = new Domain
+                    {
+                        Id = DefaultDomainId,
+                        Name = "Sơ cấp cứu ban đầu (First Aid)",
+                        Slug = "first-aid",
+                        IconUrl = "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
+                        Order = 1,
+                        Status = "Active"
+                    };
+                    await _context.Domains.AddAsync(existingDomain);
+                    _logger.LogInformation("Seeded Domain: Sơ cấp cứu ban đầu.");
+                }
+
+                // 2. Seed Unit: Xử lý Vết thương & Bỏng
+                var existingUnit = await _context.Units.FirstOrDefaultAsync(u => u.Id == DefaultUnitId);
+                if (existingUnit == null)
+                {
+                    existingUnit = new Unit
+                    {
+                        Id = DefaultUnitId,
+                        DomainId = DefaultDomainId,
+                        Title = "Chặng 1: Xử lý Vết thương & Bỏng",
+                        Description = "Học cách xử lý nhanh các tình huống bỏng nước sôi và vết thương chảy máu.",
+                        Order = 1
+                    };
+                    await _context.Units.AddAsync(existingUnit);
+                    _logger.LogInformation("Seeded Unit: Xử lý Vết thương & Bỏng.");
+                }
+
+                // 3. Seed Nodes: Node 1 & Node 2
+                var existingNode1 = await _context.Nodes.FirstOrDefaultAsync(n => n.Id == DefaultNode1Id);
+                if (existingNode1 == null)
+                {
+                    existingNode1 = new Node
+                    {
+                        Id = DefaultNode1Id,
+                        UnitId = DefaultUnitId,
+                        Title = "Bài 1.1: Bỏng nước sôi sinh hoạt & chập điện",
+                        Type = "lesson",
+                        Order = 1,
+                        XpReward = 10,
+                        Status = "Published"
+                    };
+                    await _context.Nodes.AddAsync(existingNode1);
+                    _logger.LogInformation("Seeded Node 1: Bỏng nước sôi sinh hoạt.");
+                }
+
+                var existingNode2 = await _context.Nodes.FirstOrDefaultAsync(n => n.Id == DefaultNode2Id);
+                if (existingNode2 == null)
+                {
+                    existingNode2 = new Node
+                    {
+                        Id = DefaultNode2Id,
+                        UnitId = DefaultUnitId,
+                        Title = "Bài 1.2: Vết thương chảy máu khẩn cấp",
+                        Type = "lesson",
+                        Order = 2,
+                        XpReward = 10,
+                        Status = "Published"
+                    };
+                    await _context.Nodes.AddAsync(existingNode2);
+                    _logger.LogInformation("Seeded Node 2: Vết thương chảy máu.");
+                }
+
+                // 4. Seed Questions: Choice, Sequencing, Red Flag
+                var existingQ1 = await _context.Questions.FirstOrDefaultAsync(q => q.Id == Question1Id);
+                if (existingQ1 == null)
+                {
+                    existingQ1 = new Question
+                    {
+                        Id = Question1Id,
+                        Type = "choice",
+                        Title = "Phát hiện chập điện bốc khói sau tủ lạnh, việc ĐẦU TIÊN bạn làm là gì?",
+                        ImageUrl = "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80",
+                        Payload = "{\"options\":[{\"id\":\"A\",\"text\":\"Tạt ngay xô nước vào phía sau tủ lạnh\"},{\"id\":\"B\",\"text\":\"Ngắt cầu dao tổng để cô lập nguồn điện\"},{\"id\":\"C\",\"text\":\"Mở toang cửa sổ gọi to nhờ hàng xóm\"}]}",
+                        CorrectData = "{\"correctOptionId\":\"B\"}",
+                        Explanation = "Nước dẫn điện cực mạnh gây giật tử vong ngay tại chỗ. Việc đầu tiên bắt buộc phải làm là ngắt cầu dao tổng để cô lập hoàn toàn nguồn điện.",
+                        Difficulty = "Medium",
+                        Source = "Cục Cảnh sát PCCC & CNCH - Bộ Công an",
+                        ReviewedBy = "Đại úy Nguyễn Văn A",
+                        Status = "Published"
+                    };
+                    await _context.Questions.AddAsync(existingQ1);
+                    _logger.LogInformation("Seeded Question 1 (Choice).");
+                }
+
+                var existingQ2 = await _context.Questions.FirstOrDefaultAsync(q => q.Id == Question2Id);
+                if (existingQ2 == null)
+                {
+                    existingQ2 = new Question
+                    {
+                        Id = Question2Id,
+                        Type = "sequence",
+                        Title = "Sắp xếp quy trình 4 bước xử lý nạn nhân bị bỏng nước sôi:",
+                        ImageUrl = "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80",
+                        Payload = "{\"items\":[{\"id\":\"step_cover\",\"text\":\"Che vết bỏng bằng gạc sạch vô trùng\"},{\"id\":\"step_remove\",\"text\":\"Đưa nạn nhân thoát khỏi nguồn nhiệt gây bỏng\"},{\"id\":\"step_hospital\",\"text\":\"Nhanh chóng đưa nạn nhân đến cơ sở y tế\"},{\"id\":\"step_water\",\"text\":\"Ngâm/xả vết bỏng dưới vòi nước mát sạch 15-20 phút\"}]}",
+                        CorrectData = "{\"correctOrder\":[\"step_remove\",\"step_water\",\"step_cover\",\"step_hospital\"]}",
+                        Explanation = "Quy trình sơ cứu bỏng chuẩn y tế: 1. Đưa nạn nhân khỏi nguồn nhiệt -> 2. Xả nước mát sạch hạ nhiệt -> 3. Che phủ gạc vô trùng bảo vệ -> 4. Chuyển viện cấp cứu.",
+                        Difficulty = "Medium",
+                        Source = "Bộ Y tế - Hướng dẫn sơ cấp cứu ban đầu",
+                        ReviewedBy = "BS. Trần Thị B - BV 115",
+                        Status = "Published"
+                    };
+                    await _context.Questions.AddAsync(existingQ2);
+                    _logger.LogInformation("Seeded Question 2 (Sequence).");
+                }
+
+                var existingQ3 = await _context.Questions.FirstOrDefaultAsync(q => q.Id == Question3Id);
+                if (existingQ3 == null)
+                {
+                    existingQ3 = new Question
+                    {
+                        Id = Question3Id,
+                        Type = "red_flag",
+                        Title = "Chạm vào điểm bất thường có dấu hiệu lừa đảo nguy hiểm trong tin nhắn SMS sau:",
+                        ImageUrl = "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=800&q=80",
+                        Payload = "{\"smsHeader\":\"NganHangVCB\",\"flags\":[{\"id\":\"greeting\",\"text\":\"Kính gửi quý khách,\"},{\"id\":\"alert\",\"text\":\"Tài khoản của bạn phát hiện giao dịch lạ tại Singapore.\"},{\"id\":\"phishing_link\",\"text\":\"Vui lòng truy cập vietcombannk-otp.com để hủy\"},{\"id\":\"deadline\",\"text\":\"trong vòng 5 phút trước khi bị khóa vĩnh viễn.\"}]}",
+                        CorrectData = "{\"selectedFlagId\":\"phishing_link\"}",
+                        Explanation = "Tên miền 'vietcombannk-otp.com' là trang web giả mạo ngân hàng (thừa chữ n) nhằm dụ người dùng đăng nhập để đánh cắp tên tài khoản và mã OTP.",
+                        Difficulty = "Hard",
+                        Source = "Cục An toàn thông tin - Bộ Thông tin và Truyền thông",
+                        ReviewedBy = "Chuyên gia An ninh mạng Lê C",
+                        Status = "Published"
+                    };
+                    await _context.Questions.AddAsync(existingQ3);
+                    _logger.LogInformation("Seeded Question 3 (Red Flag).");
+                }
+
+                // 5. Link Questions to Node 1 via NodeQuestions
+                var link1 = await _context.NodeQuestions.AnyAsync(nq => nq.NodeId == DefaultNode1Id && nq.QuestionId == Question1Id);
+                if (!link1)
+                {
+                    await _context.NodeQuestions.AddAsync(new NodeQuestion { NodeId = DefaultNode1Id, QuestionId = Question1Id, Order = 1 });
+                }
+
+                var link2 = await _context.NodeQuestions.AnyAsync(nq => nq.NodeId == DefaultNode1Id && nq.QuestionId == Question2Id);
+                if (!link2)
+                {
+                    await _context.NodeQuestions.AddAsync(new NodeQuestion { NodeId = DefaultNode1Id, QuestionId = Question2Id, Order = 2 });
+                }
+
+                var link3 = await _context.NodeQuestions.AnyAsync(nq => nq.NodeId == DefaultNode1Id && nq.QuestionId == Question3Id);
+                if (!link3)
+                {
+                    await _context.NodeQuestions.AddAsync(new NodeQuestion { NodeId = DefaultNode1Id, QuestionId = Question3Id, Order = 3 });
+                }
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Hoàn tất Seeding dữ liệu Gameplay mẫu độc lập cho Nhánh B.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Lỗi khi Seeding dữ liệu Gameplay mẫu: {Message}", ex.Message);
             }
         }
     }

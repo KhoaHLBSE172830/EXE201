@@ -96,6 +96,47 @@ namespace Mimo.Infrastructure.Migrations
                     b.ToTable("Courses");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Domain", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IconUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("Domains");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Enrollment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -206,6 +247,62 @@ namespace Mimo.Infrastructure.Migrations
                     b.ToTable("LessonProgresses");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.LessonSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CurrentComboStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("HeartsLost")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxComboStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("NodeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("TotalXpEarned")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NodeId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("LessonSessions");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Module", b =>
                 {
                     b.Property<Guid>("Id")
@@ -234,6 +331,70 @@ namespace Mimo.Infrastructure.Migrations
                     b.HasIndex("CourseId");
 
                     b.ToTable("Modules");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Node", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UnlockRule")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("XpReward")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UnitId");
+
+                    b.ToTable("Nodes");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.NodeQuestion", b =>
+                {
+                    b.Property<Guid>("NodeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.HasKey("NodeId", "QuestionId");
+
+                    b.HasIndex("QuestionId");
+
+                    b.ToTable("NodeQuestions");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Organization", b =>
@@ -291,6 +452,70 @@ namespace Mimo.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Organizations");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Question", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CorrectData")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CuratorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Difficulty")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CuratorId");
+
+                    b.ToTable("Questions");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Review", b =>
@@ -395,7 +620,61 @@ namespace Mimo.Infrastructure.Migrations
                             RoleName = "Organization",
                             Status = "Active",
                             UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("55555555-5555-5555-5555-555555555555"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Giáo viên / Giảng viên thuộc trường học / tổ chức",
+                            RoleName = "Educator",
+                            Status = "Active",
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.SessionAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SubmittedAnswer")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("TimeSpentSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("XpEarned")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("SessionId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("SessionAnswers");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Transaction", b =>
@@ -442,6 +721,39 @@ namespace Mimo.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Transactions");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Unit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DomainId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DomainId");
+
+                    b.ToTable("Units");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.User", b =>
@@ -535,6 +847,42 @@ namespace Mimo.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserNodeProgress", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("NodeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NodeId");
+
+                    b.HasIndex("UserId", "NodeId")
+                        .IsUnique();
+
+                    b.ToTable("UserNodeProgresses");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.UserProfile", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -595,6 +943,77 @@ namespace Mimo.Infrastructure.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("UserStats");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.WrongQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TimesWrong")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("UserId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("WrongQuestions");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.XpEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Amount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("XpEvents");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Certificate", b =>
@@ -668,6 +1087,25 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Lesson");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.LessonSession", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Node", "Node")
+                        .WithMany("LessonSessions")
+                        .HasForeignKey("NodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("LessonSessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Node");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Module", b =>
                 {
                     b.HasOne("Mimo.DomainLayer.Entities.Course", "Course")
@@ -677,6 +1115,46 @@ namespace Mimo.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Node", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Unit", "Unit")
+                        .WithMany("Nodes")
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.NodeQuestion", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Node", "Node")
+                        .WithMany("NodeQuestions")
+                        .HasForeignKey("NodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.Question", "Question")
+                        .WithMany("NodeQuestions")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Node");
+
+                    b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Question", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "Curator")
+                        .WithMany()
+                        .HasForeignKey("CuratorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Curator");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Review", b =>
@@ -698,6 +1176,25 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.SessionAnswer", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Question", "Question")
+                        .WithMany("SessionAnswers")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.LessonSession", "Session")
+                        .WithMany("Answers")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+
+                    b.Navigation("Session");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Transaction", b =>
                 {
                     b.HasOne("Mimo.DomainLayer.Entities.Course", "Course")
@@ -717,6 +1214,17 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Unit", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Domain", "Domain")
+                        .WithMany("Units")
+                        .HasForeignKey("DomainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Domain");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.User", b =>
                 {
                     b.HasOne("Mimo.DomainLayer.Entities.Organization", "Organization")
@@ -733,6 +1241,25 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Organization");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserNodeProgress", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Node", "Node")
+                        .WithMany("UserNodeProgresses")
+                        .HasForeignKey("NodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("UserNodeProgresses")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Node");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.UserProfile", b =>
@@ -757,6 +1284,36 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.WrongQuestion", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Question", "Question")
+                        .WithMany("WrongQuestions")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("WrongQuestions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.XpEvent", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("XpEvents")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Course", b =>
                 {
                     b.Navigation("Enrollments");
@@ -766,6 +1323,11 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Reviews");
 
                     b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Domain", b =>
+                {
+                    b.Navigation("Units");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Enrollment", b =>
@@ -780,9 +1342,23 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("LessonProgresses");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.LessonSession", b =>
+                {
+                    b.Navigation("Answers");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Module", b =>
                 {
                     b.Navigation("Lessons");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Node", b =>
+                {
+                    b.Navigation("LessonSessions");
+
+                    b.Navigation("NodeQuestions");
+
+                    b.Navigation("UserNodeProgresses");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Organization", b =>
@@ -790,9 +1366,23 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Users");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Question", b =>
+                {
+                    b.Navigation("NodeQuestions");
+
+                    b.Navigation("SessionAnswers");
+
+                    b.Navigation("WrongQuestions");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Role", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Unit", b =>
+                {
+                    b.Navigation("Nodes");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.User", b =>
@@ -801,6 +1391,8 @@ namespace Mimo.Infrastructure.Migrations
 
                     b.Navigation("InstructedCourses");
 
+                    b.Navigation("LessonSessions");
+
                     b.Navigation("Profile");
 
                     b.Navigation("Reviews");
@@ -808,6 +1400,12 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Stats");
 
                     b.Navigation("Transactions");
+
+                    b.Navigation("UserNodeProgresses");
+
+                    b.Navigation("WrongQuestions");
+
+                    b.Navigation("XpEvents");
                 });
 #pragma warning restore 612, 618
         }

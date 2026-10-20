@@ -18,6 +18,10 @@ public static class DependencyInjection
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<Helper.IQuestionGrader, Helper.QuestionGrader>();
+        services.AddScoped<IStreakService, StreakService>();
+        services.AddScoped<IGameplayService, GameplayService>();
+        services.AddScoped<IPracticeService, PracticeService>();
         return services;
     }
 }

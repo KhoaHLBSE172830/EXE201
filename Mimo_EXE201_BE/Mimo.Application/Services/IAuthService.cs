@@ -6,7 +6,8 @@ namespace Mimo.Application.Services
 {
     public interface IAuthService
     {
-        Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request);
+        Task<RegisterResponseDto> RegisterAsync(RegisterRequestDto request);
+        Task<RegisterResponseDto> RegisterOrganizationAsync(OrganizationRegisterRequestDto request);
         Task<AuthResponseDto> LoginAsync(LoginRequestDto request);
         Task<AuthResponseDto> GoogleLoginAsync(GoogleAuthRequestDto request);
         Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request);

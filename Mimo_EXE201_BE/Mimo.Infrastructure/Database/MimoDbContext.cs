@@ -27,6 +27,18 @@ public class MimoDbContext : DbContext
     public DbSet<UserProfile> UserProfiles { get; set; } = null!;
     public DbSet<UserStats> UserStats { get; set; } = null!;
 
+    // Gamification & Gameplay Engine (AGENT.md Section 4.2 & 4.3)
+    public DbSet<Domain> Domains { get; set; } = null!;
+    public DbSet<Unit> Units { get; set; } = null!;
+    public DbSet<Node> Nodes { get; set; } = null!;
+    public DbSet<Question> Questions { get; set; } = null!;
+    public DbSet<NodeQuestion> NodeQuestions { get; set; } = null!;
+    public DbSet<UserNodeProgress> UserNodeProgresses { get; set; } = null!;
+    public DbSet<LessonSession> LessonSessions { get; set; } = null!;
+    public DbSet<SessionAnswer> SessionAnswers { get; set; } = null!;
+    public DbSet<WrongQuestion> WrongQuestions { get; set; } = null!;
+    public DbSet<XpEvent> XpEvents { get; set; } = null!;
+
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -223,6 +235,129 @@ public class MimoDbContext : DbContext
                   .WithMany(c => c.Transactions)
                   .HasForeignKey(t => t.CourseId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // 12. Domains
+        modelBuilder.Entity<Domain>(entity =>
+        {
+            entity.HasIndex(d => d.Slug).IsUnique();
+        });
+
+        // 13. Units
+        modelBuilder.Entity<Unit>(entity =>
+        {
+            entity.HasOne(u => u.Domain)
+                  .WithMany(d => d.Units)
+                  .HasForeignKey(u => u.DomainId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 14. Nodes
+        modelBuilder.Entity<Node>(entity =>
+        {
+            entity.HasOne(n => n.Unit)
+                  .WithMany(u => u.Nodes)
+                  .HasForeignKey(n => n.UnitId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 15. Questions
+        modelBuilder.Entity<Question>(entity =>
+        {
+            entity.HasOne(q => q.Curator)
+                  .WithMany()
+                  .HasForeignKey(q => q.CuratorId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // 16. NodeQuestions (Composite Key)
+        modelBuilder.Entity<NodeQuestion>(entity =>
+        {
+            entity.HasKey(nq => new { nq.NodeId, nq.QuestionId });
+
+            entity.HasOne(nq => nq.Node)
+                  .WithMany(n => n.NodeQuestions)
+                  .HasForeignKey(nq => nq.NodeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(nq => nq.Question)
+                  .WithMany(q => q.NodeQuestions)
+                  .HasForeignKey(nq => nq.QuestionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 17. UserNodeProgresses
+        modelBuilder.Entity<UserNodeProgress>(entity =>
+        {
+            entity.HasIndex(unp => new { unp.UserId, unp.NodeId }).IsUnique();
+
+            entity.HasOne(unp => unp.User)
+                  .WithMany(u => u.UserNodeProgresses)
+                  .HasForeignKey(unp => unp.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(unp => unp.Node)
+                  .WithMany(n => n.UserNodeProgresses)
+                  .HasForeignKey(unp => unp.NodeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 18. LessonSessions
+        modelBuilder.Entity<LessonSession>(entity =>
+        {
+            entity.HasOne(ls => ls.User)
+                  .WithMany(u => u.LessonSessions)
+                  .HasForeignKey(ls => ls.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ls => ls.Node)
+                  .WithMany(n => n.LessonSessions)
+                  .HasForeignKey(ls => ls.NodeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 19. SessionAnswers
+        modelBuilder.Entity<SessionAnswer>(entity =>
+        {
+            entity.HasIndex(sa => new { sa.SessionId, sa.QuestionId }).IsUnique();
+
+            entity.HasOne(sa => sa.Session)
+                  .WithMany(s => s.Answers)
+                  .HasForeignKey(sa => sa.SessionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(sa => sa.Question)
+                  .WithMany(q => q.SessionAnswers)
+                  .HasForeignKey(sa => sa.QuestionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 20. WrongQuestions
+        modelBuilder.Entity<WrongQuestion>(entity =>
+        {
+            entity.HasIndex(wq => new { wq.UserId, wq.QuestionId }).IsUnique();
+
+            entity.HasOne(wq => wq.User)
+                  .WithMany(u => u.WrongQuestions)
+                  .HasForeignKey(wq => wq.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(wq => wq.Question)
+                  .WithMany(q => q.WrongQuestions)
+                  .HasForeignKey(wq => wq.QuestionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 21. XpEvents (Ledger)
+        modelBuilder.Entity<XpEvent>(entity =>
+        {
+            entity.HasIndex(xe => xe.UserId);
+            entity.HasIndex(xe => xe.CreatedAt);
+
+            entity.HasOne(xe => xe.User)
+                  .WithMany(u => u.XpEvents)
+                  .HasForeignKey(xe => xe.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

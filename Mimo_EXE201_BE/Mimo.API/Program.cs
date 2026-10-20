@@ -35,18 +35,19 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Swagger / OpenAPI with JWT Bearer support
+// Swagger / OpenAPI with JWT Bearer support (Http scheme - tự động thêm "Bearer " prefix)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Mimo API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        Description = "Nhập JWT Access Token vào ô bên dưới (KHÔNG cần gõ 'Bearer'). Swagger sẽ tự thêm tiền tố cho bạn.",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Type = SecuritySchemeType.Http,   // ← Dùng Http thay vì ApiKey
+        Scheme = "bearer",                 // ← Phải là chữ thường "bearer"
+        BearerFormat = "JWT"               // ← Thông tin hiển thị trên UI
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
