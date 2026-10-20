@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Mimo.API.Middlewares;
 using Mimo.Application;
@@ -62,16 +63,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 
-    // Tự động khởi tạo cấu trúc bảng nếu chưa tồn tại
+    // Tự động chạy Migration cập nhật cấu trúc database nếu có
     try
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<Mimo.Infrastructure.Database.MimoDbContext>();
-        db.Database.EnsureCreated();
+        db.Database.Migrate();
     }
     catch (Exception ex)
     {
-        app.Logger.LogWarning(ex, "Chưa thể kết nối PostgreSQL để EnsureCreated: {Message}", ex.Message);
+        app.Logger.LogWarning(ex, "Chưa thể kết nối PostgreSQL để chạy Migrate: {Message}", ex.Message);
     }
 }
 

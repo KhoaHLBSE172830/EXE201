@@ -13,17 +13,20 @@ namespace Mimo.Application.Services
     {
         private readonly IGenericRepository<User> _userRepository;
         private readonly IGenericRepository<Organization> _orgRepository;
+        private readonly IGenericRepository<Role> _roleRepository;
         private readonly IJwtService _jwtService;
         private readonly ICryptoService _cryptoService;
 
         public AuthService(
             IGenericRepository<User> userRepository,
             IGenericRepository<Organization> orgRepository,
+            IGenericRepository<Role> roleRepository,
             IJwtService jwtService,
             ICryptoService cryptoService)
         {
             _userRepository = userRepository;
             _orgRepository = orgRepository;
+            _roleRepository = roleRepository;
             _jwtService = jwtService;
             _cryptoService = cryptoService;
         }
@@ -74,18 +77,33 @@ namespace Mimo.Application.Services
                 organizationId = existingOrg.Id;
             }
 
-            // 3. Băm mật khẩu và tạo refresh token
+            // 3. Tìm hoặc cấp Role tương ứng từ bảng Roles
+            var targetRoleName = request.Role.ToString();
+            var roleEntity = await _roleRepository.FirstOrDefaultAsync(r => r.RoleName.ToLower() == targetRoleName.ToLower());
+            if (roleEntity == null)
+            {
+                // Fallback nếu role chưa có trong DB
+                roleEntity = await _roleRepository.CreateAsync(new Role
+                {
+                    RoleName = targetRoleName,
+                    Description = $"Role {targetRoleName}",
+                    Status = RoleStatusEnum.Active
+                });
+            }
+
+            // 4. Băm mật khẩu và tạo refresh token
             var passwordHash = _cryptoService.HashPassword(request.Password);
             var refreshToken = _cryptoService.GenerateRandomToken(32);
 
             var user = new User
             {
-                FullName = request.FullName.Trim(),
+                Name = request.FullName.Trim(),
                 Email = normalizedEmail,
-                PasswordHash = passwordHash,
-                Role = request.Role,
+                Password = passwordHash,
+                RoleId = roleEntity.Id,
+                Role = roleEntity,
                 Status = UserStatusEnum.Active,
-                PhoneNumber = request.PhoneNumber,
+                Phone = request.PhoneNumber,
                 OrganizationId = organizationId,
                 RefreshToken = refreshToken,
                 RefreshTokenExpiryTime = DateTime.UtcNow.AddSeconds(JwtConst.REFRESH_TOKEN_EXP)
@@ -93,11 +111,11 @@ namespace Mimo.Application.Services
 
             var createdUser = await _userRepository.CreateAsync(user);
 
-            // 4. Sinh JWT Access Token
+            // 5. Sinh JWT Access Token
             var sessionId = Guid.NewGuid();
             var accessToken = _jwtService.GenerateToken(
                 createdUser.Id,
-                createdUser.Role.ToString(),
+                roleEntity.RoleName,
                 sessionId,
                 createdUser.Email,
                 createdUser.Status,
@@ -110,7 +128,7 @@ namespace Mimo.Application.Services
                 RefreshToken = refreshToken,
                 TokenType = "Bearer",
                 ExpiresIn = JwtConst.ACCESS_TOKEN_EXP,
-                User = MapToUserProfile(createdUser)
+                User = MapToUserProfile(createdUser, roleEntity.RoleName)
             };
         }
 
@@ -118,15 +136,19 @@ namespace Mimo.Application.Services
         {
             var normalizedEmail = request.Email.Trim().ToLower();
 
-            // 1. Tìm user theo Email
-            var user = await _userRepository.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail, nameof(User.Organization));
+            // 1. Tìm user theo Email kèm Role và Organization
+            var user = await _userRepository.FirstOrDefaultAsync(
+                u => u.Email.ToLower() == normalizedEmail, 
+                nameof(User.Role), 
+                nameof(User.Organization));
+
             if (user == null)
             {
                 throw new BadRequestException("Tài khoản hoặc mật khẩu không chính xác.");
             }
 
             // 2. Xác thực mật khẩu
-            if (!_cryptoService.VerifyPassword(request.Password, user.PasswordHash))
+            if (!_cryptoService.VerifyPassword(request.Password, user.Password))
             {
                 throw new BadRequestException("Tài khoản hoặc mật khẩu không chính xác.");
             }
@@ -137,17 +159,19 @@ namespace Mimo.Application.Services
                 throw new BadRequestException("Tài khoản đang bị khóa hoặc chưa được kích hoạt.");
             }
 
-            // 4. Cập nhật Refresh Token mới
+            // 4. Cập nhật LastLogin và Refresh Token mới
             var refreshToken = _cryptoService.GenerateRandomToken(32);
+            user.LastLogin = DateTime.UtcNow;
             user.RefreshToken = refreshToken;
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddSeconds(JwtConst.REFRESH_TOKEN_EXP);
             await _userRepository.UpdateAsync(user);
 
             // 5. Sinh JWT Token
             var sessionId = Guid.NewGuid();
+            var roleName = user.Role?.RoleName ?? "Student";
             var accessToken = _jwtService.GenerateToken(
                 user.Id,
-                user.Role.ToString(),
+                roleName,
                 sessionId,
                 user.Email,
                 user.Status,
@@ -160,19 +184,23 @@ namespace Mimo.Application.Services
                 RefreshToken = refreshToken,
                 TokenType = "Bearer",
                 ExpiresIn = JwtConst.ACCESS_TOKEN_EXP,
-                User = MapToUserProfile(user)
+                User = MapToUserProfile(user, roleName)
             };
         }
 
         public async Task<UserProfileDto> GetCurrentUserAsync(Guid userId)
         {
-            var user = await _userRepository.FirstOrDefaultAsync(u => u.Id == userId, nameof(User.Organization));
+            var user = await _userRepository.FirstOrDefaultAsync(
+                u => u.Id == userId, 
+                nameof(User.Role), 
+                nameof(User.Organization));
+
             if (user == null)
             {
                 throw new NotFoundException("Không tìm thấy thông tin người dùng.");
             }
 
-            return MapToUserProfile(user);
+            return MapToUserProfile(user, user.Role?.RoleName ?? "Student");
         }
 
         public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)
@@ -184,6 +212,7 @@ namespace Mimo.Application.Services
 
             var user = await _userRepository.FirstOrDefaultAsync(
                 u => u.RefreshToken == request.RefreshToken,
+                nameof(User.Role),
                 nameof(User.Organization));
 
             if (user == null || user.RefreshTokenExpiryTime == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
@@ -198,9 +227,10 @@ namespace Mimo.Application.Services
             await _userRepository.UpdateAsync(user);
 
             var sessionId = Guid.NewGuid();
+            var roleName = user.Role?.RoleName ?? "Student";
             var newAccessToken = _jwtService.GenerateToken(
                 user.Id,
-                user.Role.ToString(),
+                roleName,
                 sessionId,
                 user.Email,
                 user.Status,
@@ -213,21 +243,22 @@ namespace Mimo.Application.Services
                 RefreshToken = newRefreshToken,
                 TokenType = "Bearer",
                 ExpiresIn = JwtConst.ACCESS_TOKEN_EXP,
-                User = MapToUserProfile(user)
+                User = MapToUserProfile(user, roleName)
             };
         }
 
-        private static UserProfileDto MapToUserProfile(User user)
+        private static UserProfileDto MapToUserProfile(User user, string? roleName = null)
         {
             return new UserProfileDto
             {
                 Id = user.Id,
-                FullName = user.FullName,
+                FullName = user.Name,
                 Email = user.Email,
-                Role = user.Role,
+                RoleId = user.RoleId,
+                RoleName = roleName ?? user.Role?.RoleName ?? "Student",
                 Status = user.Status,
-                PhoneNumber = user.PhoneNumber,
-                AvatarUrl = user.AvatarUrl,
+                PhoneNumber = user.Phone,
+                AvatarUrl = user.Avatar,
                 OrganizationId = user.OrganizationId,
                 OrganizationName = user.Organization?.Name,
                 CreatedAt = user.CreatedAt

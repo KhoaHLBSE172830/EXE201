@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Mimo.DomainLayer.Entities;
+using static Mimo.DomainLayer.Enum.GeneralEnum;
 
 namespace Mimo.Infrastructure.Database;
 
@@ -12,8 +13,17 @@ public class MimoDbContext : DbContext
     {
     }
 
+    public DbSet<Role> Roles { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<Organization> Organizations { get; set; } = null!;
+    public DbSet<Course> Courses { get; set; } = null!;
+    public DbSet<Module> Modules { get; set; } = null!;
+    public DbSet<Lesson> Lessons { get; set; } = null!;
+    public DbSet<Enrollment> Enrollments { get; set; } = null!;
+    public DbSet<LessonProgress> LessonProgresses { get; set; } = null!;
+    public DbSet<Certificate> Certificates { get; set; } = null!;
+    public DbSet<Review> Reviews { get; set; } = null!;
+    public DbSet<Transaction> Transactions { get; set; } = null!;
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -38,17 +48,161 @@ public class MimoDbContext : DbContext
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MimoDbContext).Assembly);
 
-        modelBuilder.Entity<User>(entity =>
+        // 1. Roles
+        modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasIndex(u => u.Email).IsUnique();
-            entity.Property(u => u.Role).HasConversion<string>();
-            entity.Property(u => u.Status).HasConversion<string>();
+            entity.HasIndex(r => r.RoleName).IsUnique();
+            entity.Property(r => r.Status).HasConversion<string>();
         });
 
+        // Seed 4 default roles
+        var adminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var studentRoleId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var curatorRoleId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        var orgRoleId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+
+        modelBuilder.Entity<Role>().HasData(
+            new Role { Id = adminRoleId, RoleName = "Admin", Description = "Quản trị viên toàn hệ thống", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Role { Id = studentRoleId, RoleName = "Student", Description = "Học sinh / Người học kỹ năng", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Role { Id = curatorRoleId, RoleName = "Curator", Description = "Giảng viên / Biên tập kịch bản bài giảng", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Role { Id = orgRoleId, RoleName = "Organization", Description = "Đại diện tổ chức / Trường học B2B", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+        );
+
+        // 2. Organizations
         modelBuilder.Entity<Organization>(entity =>
         {
             entity.HasIndex(o => o.Code).IsUnique();
             entity.Property(o => o.Status).HasConversion<string>();
+            entity.Property(o => o.SubscriptionTier).HasConversion<string>();
+        });
+
+        // 3. Users
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasIndex(u => u.Email).IsUnique();
+            entity.Property(u => u.Status).HasConversion<string>();
+
+            entity.HasOne(u => u.Role)
+                  .WithMany(r => r.Users)
+                  .HasForeignKey(u => u.RoleId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(u => u.Organization)
+                  .WithMany(o => o.Users)
+                  .HasForeignKey(u => u.OrganizationId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // 4. Courses
+        modelBuilder.Entity<Course>(entity =>
+        {
+            entity.Property(c => c.DifficultyLevel).HasConversion<string>();
+            entity.Property(c => c.Status).HasConversion<string>();
+
+            entity.HasOne(c => c.Instructor)
+                  .WithMany(u => u.InstructedCourses)
+                  .HasForeignKey(c => c.InstructorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // 5. Modules
+        modelBuilder.Entity<Module>(entity =>
+        {
+            entity.HasOne(m => m.Course)
+                  .WithMany(c => c.Modules)
+                  .HasForeignKey(m => m.CourseId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 6. Lessons
+        modelBuilder.Entity<Lesson>(entity =>
+        {
+            entity.Property(l => l.ContentType).HasConversion<string>();
+
+            entity.HasOne(l => l.Module)
+                  .WithMany(m => m.Lessons)
+                  .HasForeignKey(l => l.ModuleId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 7. Enrollments
+        modelBuilder.Entity<Enrollment>(entity =>
+        {
+            entity.Property(e => e.Status).HasConversion<string>();
+
+            entity.HasIndex(e => new { e.UserId, e.CourseId }).IsUnique();
+
+            entity.HasOne(e => e.User)
+                  .WithMany(u => u.Enrollments)
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Course)
+                  .WithMany(c => c.Enrollments)
+                  .HasForeignKey(e => e.CourseId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 8. LessonProgresses
+        modelBuilder.Entity<LessonProgress>(entity =>
+        {
+            entity.Property(lp => lp.Status).HasConversion<string>();
+
+            entity.HasIndex(lp => new { lp.EnrollmentId, lp.LessonId }).IsUnique();
+
+            entity.HasOne(lp => lp.Enrollment)
+                  .WithMany(e => e.LessonProgresses)
+                  .HasForeignKey(lp => lp.EnrollmentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(lp => lp.Lesson)
+                  .WithMany(l => l.LessonProgresses)
+                  .HasForeignKey(lp => lp.LessonId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 9. Certificates
+        modelBuilder.Entity<Certificate>(entity =>
+        {
+            entity.HasIndex(c => c.EnrollmentId).IsUnique();
+
+            entity.HasOne(c => c.Enrollment)
+                  .WithOne(e => e.Certificate)
+                  .HasForeignKey<Certificate>(c => c.EnrollmentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 10. Reviews
+        modelBuilder.Entity<Review>(entity =>
+        {
+            entity.HasIndex(r => new { r.UserId, r.CourseId }).IsUnique();
+
+            entity.HasOne(r => r.User)
+                  .WithMany(u => u.Reviews)
+                  .HasForeignKey(r => r.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(r => r.Course)
+                  .WithMany(c => c.Reviews)
+                  .HasForeignKey(r => r.CourseId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 11. Transactions
+        modelBuilder.Entity<Transaction>(entity =>
+        {
+            entity.Property(t => t.PaymentMethod).HasConversion<string>();
+            entity.Property(t => t.Status).HasConversion<string>();
+
+            entity.HasOne(t => t.User)
+                  .WithMany(u => u.Transactions)
+                  .HasForeignKey(t => t.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(t => t.Course)
+                  .WithMany(c => c.Transactions)
+                  .HasForeignKey(t => t.CourseId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
