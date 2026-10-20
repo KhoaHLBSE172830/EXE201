@@ -8,7 +8,9 @@ namespace Mimo.Application.Services
     {
         Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request);
         Task<AuthResponseDto> LoginAsync(LoginRequestDto request);
-        Task<UserProfileDto> GetCurrentUserAsync(Guid userId);
+        Task<AuthResponseDto> GoogleLoginAsync(GoogleAuthRequestDto request);
         Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request);
+        Task<bool> LogoutAsync(Guid userId, Guid sessionId);
+        Task<bool> ForceLogoutAsync(Guid userId);
     }
 }

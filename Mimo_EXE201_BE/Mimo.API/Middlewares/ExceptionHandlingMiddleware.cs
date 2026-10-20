@@ -56,10 +56,32 @@ namespace Mimo.API.Middlewares
                     message = unauthorizedEx.Message;
                     break;
 
+                case FluentValidation.ValidationException fvEx:
+                    statusCode = StatusCodes.Status400BadRequest;
+                    var validationErrors = fvEx.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                            g => g.Key,
+                            g => g.Select(e => e.ErrorMessage).ToArray()
+                        );
+
+                    context.Response.StatusCode = statusCode;
+                    var fvResponse = new
+                    {
+                        Error = "Dữ liệu yêu cầu không hợp lệ.",
+                        Code = statusCode,
+                        Timestamp = DateTime.UtcNow,
+                        Errors = validationErrors
+                    };
+                    var fvJsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(fvResponse, fvJsonOptions));
+                    return;
+
                 default:
                     // Trong production không để lộ raw stack trace
                     break;
             }
+
 
             context.Response.StatusCode = statusCode;
 

@@ -1,12 +1,24 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Mimo.API.Middlewares;
 using Mimo.Application;
+using Mimo.Application.Filters;
 using Mimo.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers();
+// Add services to the container with global ValidationFilter
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ValidationFilter>();
+});
+
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.SuppressModelStateInvalidFilter = true;
+});
+
 
 // Register Clean Architecture layers
 builder.Services.AddApplicationServices();
@@ -62,16 +74,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 
-    // Tự động khởi tạo cấu trúc bảng nếu chưa tồn tại
+    // Tự động chạy Migration và Seed dữ liệu hệ thống
     try
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<Mimo.Infrastructure.Database.MimoDbContext>();
-        db.Database.EnsureCreated();
+        await db.Database.MigrateAsync();
+
+        var seeder = scope.ServiceProvider.GetRequiredService<Mimo.Infrastructure.Database.IDatabaseSeeder>();
+        await seeder.SeedAsync();
     }
     catch (Exception ex)
     {
-        app.Logger.LogWarning(ex, "Chưa thể kết nối PostgreSQL để EnsureCreated: {Message}", ex.Message);
+        app.Logger.LogWarning(ex, "Chưa thể kết nối PostgreSQL để chạy Migrate/Seed: {Message}", ex.Message);
     }
 }
 
