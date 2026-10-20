@@ -29,7 +29,8 @@ namespace Mimo.DomainLayer.Enum
             Admin = 1,
             Student = 2,
             Curator = 3,
-            Organization = 4
+            Organization = 4,
+            Educator = 5
         }
 
         public enum OrganizationStatusEnum
