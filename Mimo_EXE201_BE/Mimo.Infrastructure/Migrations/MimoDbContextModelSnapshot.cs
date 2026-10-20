@@ -503,6 +503,14 @@ namespace Mimo.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Timezone")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("TotalXp")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -517,9 +525,76 @@ namespace Mimo.Infrastructure.Migrations
 
                     b.HasIndex("OrganizationId");
 
-                    b.HasIndex("RoleId");
+                    b.HasIndex("RoleId")
+                        .IsUnique()
+                        .HasFilter("\"RoleId\" = '11111111-1111-1111-1111-111111111111'");
+
+                    b.HasIndex("UserName")
+                        .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AvatarUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DailyGoalMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("RiskSurveyResult")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserProfiles");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserStats", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Hearts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("HeartsUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsPro")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly?>("LastActiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("ProExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Streak")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StreakFreezeCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserStats");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Certificate", b =>
@@ -660,6 +735,28 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserProfile", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithOne("Profile")
+                        .HasForeignKey("Mimo.DomainLayer.Entities.UserProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserStats", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithOne("Stats")
+                        .HasForeignKey("Mimo.DomainLayer.Entities.UserStats", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Course", b =>
                 {
                     b.Navigation("Enrollments");
@@ -704,7 +801,11 @@ namespace Mimo.Infrastructure.Migrations
 
                     b.Navigation("InstructedCourses");
 
+                    b.Navigation("Profile");
+
                     b.Navigation("Reviews");
+
+                    b.Navigation("Stats");
 
                     b.Navigation("Transactions");
                 });

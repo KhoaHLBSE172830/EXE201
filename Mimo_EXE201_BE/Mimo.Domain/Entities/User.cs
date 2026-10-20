@@ -83,6 +83,14 @@ namespace Mimo.DomainLayer.Entities
 
         public DateTime? RefreshTokenExpiryTime { get; set; }
 
+        [MaxLength(50)]
+        public string Timezone { get; set; } = "Asia/Ho_Chi_Minh";
+
+        public int TotalXp { get; set; } = 0;
+
+        public virtual UserProfile? Profile { get; set; }
+        public virtual UserStats? Stats { get; set; }
+
         public virtual ICollection<Course> InstructedCourses { get; set; } = new List<Course>();
         public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
         public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();

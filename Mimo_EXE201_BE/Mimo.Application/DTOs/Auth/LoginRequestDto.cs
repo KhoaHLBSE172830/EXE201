@@ -4,8 +4,7 @@ namespace Mimo.Application.DTOs.Auth
 {
     public class LoginRequestDto
     {
-        [Required(ErrorMessage = "Email là bắt buộc")]
-        [EmailAddress(ErrorMessage = "Định dạng Email không hợp lệ")]
+        [Required(ErrorMessage = "Email hoặc Tên đăng nhập (UserName) là bắt buộc")]
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Mật khẩu là bắt buộc")]

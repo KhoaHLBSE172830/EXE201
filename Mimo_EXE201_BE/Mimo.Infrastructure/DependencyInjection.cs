@@ -32,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<ICryptoService, CryptoService>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IMailService, MailService>();
+        services.AddScoped<IDatabaseSeeder, DatabaseSeeder>();
+        services.AddScoped<IGoogleAuthService, Mimo.Infrastructure.Core.Auth.GoogleAuthService>();
 
         // Redis & Cache Service
         var redisConn = configuration.GetConnectionString("Redis") 

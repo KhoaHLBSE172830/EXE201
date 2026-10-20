@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Mimo.Application.DTOs.Auth;
 using Mimo.Application.Repositories;
 using Mimo.DomainLayer.Constants;
@@ -14,28 +15,49 @@ namespace Mimo.Application.Services
         private readonly IGenericRepository<User> _userRepository;
         private readonly IGenericRepository<Organization> _orgRepository;
         private readonly IGenericRepository<Role> _roleRepository;
+        private readonly IGenericRepository<UserProfile> _profileRepository;
+        private readonly IGenericRepository<UserStats> _statsRepository;
         private readonly IJwtService _jwtService;
         private readonly ICryptoService _cryptoService;
+        private readonly ICacheService _cacheService;
+        private readonly IGoogleAuthService _googleAuthService;
+        private readonly ILogger<AuthService> _logger;
 
         public AuthService(
             IGenericRepository<User> userRepository,
             IGenericRepository<Organization> orgRepository,
             IGenericRepository<Role> roleRepository,
+            IGenericRepository<UserProfile> profileRepository,
+            IGenericRepository<UserStats> statsRepository,
             IJwtService jwtService,
-            ICryptoService cryptoService)
+            ICryptoService cryptoService,
+            ICacheService cacheService,
+            IGoogleAuthService googleAuthService,
+            ILogger<AuthService> logger)
         {
             _userRepository = userRepository;
             _orgRepository = orgRepository;
             _roleRepository = roleRepository;
+            _profileRepository = profileRepository;
+            _statsRepository = statsRepository;
             _jwtService = jwtService;
             _cryptoService = cryptoService;
+            _cacheService = cacheService;
+            _googleAuthService = googleAuthService;
+            _logger = logger;
         }
 
         public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
         {
+            // 1. Ngăn chặn tuyệt đối đăng ký tài khoản với vai trò Admin
+            if (request.Role == UserRoleEnum.Admin)
+            {
+                throw new BadRequestException("Không thể tự đăng ký tài khoản với vai trò Quản trị viên (Admin). Hệ thống chỉ cho phép duy nhất một Admin được cấu hình sẵn.");
+            }
+
             var normalizedEmail = request.Email.Trim().ToLower();
 
-            // 1. Kiểm tra Email đã tồn tại chưa
+            // 2. Kiểm tra Email đã tồn tại chưa
             var existingUser = await _userRepository.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
             if (existingUser != null)
             {
@@ -44,10 +66,9 @@ namespace Mimo.Application.Services
 
             Guid? organizationId = null;
 
-            // 2. Xử lý logic theo Role
+            // 3. Xử lý logic theo Role
             if (request.Role == UserRoleEnum.Organization)
             {
-                // Đăng ký cho đại diện Organization mới
                 var orgName = string.IsNullOrWhiteSpace(request.OrganizationName) ? $"{request.FullName}'s Org" : request.OrganizationName.Trim();
                 var orgCode = "ORG_" + _cryptoService.GenerateRandomToken(6).ToUpper();
 
@@ -67,7 +88,6 @@ namespace Mimo.Application.Services
             }
             else if (!string.IsNullOrWhiteSpace(request.OrganizationCode))
             {
-                // Học sinh hoặc giảng viên đăng ký kèm mã trường/lớp
                 var code = request.OrganizationCode.Trim().ToUpper();
                 var existingOrg = await _orgRepository.FirstOrDefaultAsync(o => o.Code.ToUpper() == code);
                 if (existingOrg == null)
@@ -77,12 +97,11 @@ namespace Mimo.Application.Services
                 organizationId = existingOrg.Id;
             }
 
-            // 3. Tìm hoặc cấp Role tương ứng từ bảng Roles
+            // 4. Tìm Role tương ứng từ bảng Roles
             var targetRoleName = request.Role.ToString();
             var roleEntity = await _roleRepository.FirstOrDefaultAsync(r => r.RoleName.ToLower() == targetRoleName.ToLower());
             if (roleEntity == null)
             {
-                // Fallback nếu role chưa có trong DB
                 roleEntity = await _roleRepository.CreateAsync(new Role
                 {
                     RoleName = targetRoleName,
@@ -91,13 +110,16 @@ namespace Mimo.Application.Services
                 });
             }
 
-            // 4. Băm mật khẩu và tạo refresh token
+            // 5. Băm mật khẩu và tạo refresh token
             var passwordHash = _cryptoService.HashPassword(request.Password);
             var refreshToken = _cryptoService.GenerateRandomToken(32);
+            var userId = Guid.NewGuid();
 
             var user = new User
             {
+                Id = userId,
                 Name = request.FullName.Trim(),
+                UserName = normalizedEmail.Split('@')[0],
                 Email = normalizedEmail,
                 Password = passwordHash,
                 RoleId = roleEntity.Id,
@@ -105,13 +127,37 @@ namespace Mimo.Application.Services
                 Status = UserStatusEnum.Active,
                 Phone = request.PhoneNumber,
                 OrganizationId = organizationId,
+                AuthType = "Local",
+                Timezone = "Asia/Ho_Chi_Minh",
+                TotalXp = 0,
                 RefreshToken = refreshToken,
                 RefreshTokenExpiryTime = DateTime.UtcNow.AddSeconds(JwtConst.REFRESH_TOKEN_EXP)
             };
 
             var createdUser = await _userRepository.CreateAsync(user);
 
-            // 5. Sinh JWT Access Token
+            // 6. Tự động khởi tạo UserProfile & UserStats (5 tim mặc định)
+            var profile = new UserProfile
+            {
+                UserId = createdUser.Id,
+                FullName = createdUser.Name,
+                AvatarUrl = createdUser.Avatar,
+                DailyGoalMinutes = 10
+            };
+            await _profileRepository.CreateAsync(profile);
+
+            var stats = new UserStats
+            {
+                UserId = createdUser.Id,
+                Hearts = 5,
+                HeartsUpdatedAt = DateTime.UtcNow,
+                Streak = 0,
+                StreakFreezeCount = 0,
+                IsPro = false
+            };
+            await _statsRepository.CreateAsync(stats);
+
+            // 7. Sinh SessionId và JWT Access Token
             var sessionId = Guid.NewGuid();
             var accessToken = _jwtService.GenerateToken(
                 createdUser.Id,
@@ -121,6 +167,16 @@ namespace Mimo.Application.Services
                 createdUser.Status,
                 JwtConst.ACCESS_TOKEN_EXP
             );
+
+            // 8. Lưu phiên đăng nhập vào Redis
+            try
+            {
+                await _cacheService.Set($"ss:{createdUser.Id}:{sessionId}", true, TimeSpan.FromSeconds(JwtConst.ACCESS_TOKEN_EXP));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Không thể lưu session vào Redis khi đăng ký: {Message}", ex.Message);
+            }
 
             return new AuthResponseDto
             {
@@ -134,11 +190,11 @@ namespace Mimo.Application.Services
 
         public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
         {
-            var normalizedEmail = request.Email.Trim().ToLower();
+            var identifier = request.Email.Trim().ToLower();
 
-            // 1. Tìm user theo Email kèm Role và Organization
+            // 1. Tìm user theo Email HOẶC UserName kèm Role và Organization
             var user = await _userRepository.FirstOrDefaultAsync(
-                u => u.Email.ToLower() == normalizedEmail, 
+                u => u.Email.ToLower() == identifier || (u.UserName != null && u.UserName.ToLower() == identifier), 
                 nameof(User.Role), 
                 nameof(User.Organization));
 
@@ -166,7 +222,7 @@ namespace Mimo.Application.Services
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddSeconds(JwtConst.REFRESH_TOKEN_EXP);
             await _userRepository.UpdateAsync(user);
 
-            // 5. Sinh JWT Token
+            // 5. Sinh SessionId và JWT Access Token
             var sessionId = Guid.NewGuid();
             var roleName = user.Role?.RoleName ?? "Student";
             var accessToken = _jwtService.GenerateToken(
@@ -178,6 +234,16 @@ namespace Mimo.Application.Services
                 JwtConst.ACCESS_TOKEN_EXP
             );
 
+            // 6. Lưu phiên vào Redis
+            try
+            {
+                await _cacheService.Set($"ss:{user.Id}:{sessionId}", true, TimeSpan.FromSeconds(JwtConst.ACCESS_TOKEN_EXP));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Không thể lưu session vào Redis khi đăng nhập: {Message}", ex.Message);
+            }
+
             return new AuthResponseDto
             {
                 AccessToken = accessToken,
@@ -188,19 +254,131 @@ namespace Mimo.Application.Services
             };
         }
 
-        public async Task<UserProfileDto> GetCurrentUserAsync(Guid userId)
+        public async Task<AuthResponseDto> GoogleLoginAsync(GoogleAuthRequestDto request)
         {
+            // 1. Xác thực Google ID Token
+            var googleUser = await _googleAuthService.ValidateTokenAsync(request.IdToken);
+            var normalizedEmail = googleUser.Email.Trim().ToLower();
+
+            // 2. Kiểm tra xem user đã tồn tại chưa
             var user = await _userRepository.FirstOrDefaultAsync(
-                u => u.Id == userId, 
-                nameof(User.Role), 
+                u => u.Email.ToLower() == normalizedEmail,
+                nameof(User.Role),
                 nameof(User.Organization));
 
             if (user == null)
             {
-                throw new NotFoundException("Không tìm thấy thông tin người dùng.");
+                // Ngăn chặn tạo Admin qua Google
+                if (request.Role == UserRoleEnum.Admin)
+                {
+                    throw new BadRequestException("Không thể tự gán vai trò Admin khi đăng nhập Google.");
+                }
+
+                // Tìm Role Student (mặc định cho Google Auth)
+                var roleName = request.Role == UserRoleEnum.Organization ? "Organization" : "Student";
+                var roleEntity = await _roleRepository.FirstOrDefaultAsync(r => r.RoleName.ToLower() == roleName.ToLower());
+                if (roleEntity == null)
+                {
+                    roleEntity = await _roleRepository.CreateAsync(new Role
+                    {
+                        RoleName = roleName,
+                        Description = $"Role {roleName}",
+                        Status = RoleStatusEnum.Active
+                    });
+                }
+
+                var userId = Guid.NewGuid();
+                var refreshToken = _cryptoService.GenerateRandomToken(32);
+
+                user = new User
+                {
+                    Id = userId,
+                    Name = googleUser.Name,
+                    UserName = normalizedEmail.Split('@')[0],
+                    Email = normalizedEmail,
+                    Password = _cryptoService.HashPassword(Guid.NewGuid().ToString("N")),
+                    RoleId = roleEntity.Id,
+                    Role = roleEntity,
+                    Status = UserStatusEnum.Active,
+                    AuthType = "Google",
+                    Avatar = googleUser.Picture,
+                    Timezone = "Asia/Ho_Chi_Minh",
+                    TotalXp = 0,
+                    LastLogin = DateTime.UtcNow,
+                    RefreshToken = refreshToken,
+                    RefreshTokenExpiryTime = DateTime.UtcNow.AddSeconds(JwtConst.REFRESH_TOKEN_EXP)
+                };
+
+                user = await _userRepository.CreateAsync(user);
+
+                // Khởi tạo Profile & Stats
+                await _profileRepository.CreateAsync(new UserProfile
+                {
+                    UserId = user.Id,
+                    FullName = user.Name,
+                    AvatarUrl = user.Avatar,
+                    DailyGoalMinutes = 10
+                });
+
+                await _statsRepository.CreateAsync(new UserStats
+                {
+                    UserId = user.Id,
+                    Hearts = 5,
+                    HeartsUpdatedAt = DateTime.UtcNow,
+                    Streak = 0,
+                    StreakFreezeCount = 0,
+                    IsPro = false
+                });
+            }
+            else
+            {
+                if (user.Status != UserStatusEnum.Active)
+                {
+                    throw new BadRequestException("Tài khoản đang bị khóa hoặc chưa được kích hoạt.");
+                }
+
+                user.LastLogin = DateTime.UtcNow;
+                if (!string.IsNullOrEmpty(googleUser.Picture) && string.IsNullOrEmpty(user.Avatar))
+                {
+                    user.Avatar = googleUser.Picture;
+                }
+
+                var refreshToken = _cryptoService.GenerateRandomToken(32);
+                user.RefreshToken = refreshToken;
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddSeconds(JwtConst.REFRESH_TOKEN_EXP);
+                await _userRepository.UpdateAsync(user);
             }
 
-            return MapToUserProfile(user, user.Role?.RoleName ?? "Student");
+            // Sinh Token
+            var sessionId = Guid.NewGuid();
+            var userRole = user.Role?.RoleName ?? "Student";
+            var accessToken = _jwtService.GenerateToken(
+                user.Id,
+                userRole,
+                sessionId,
+                user.Email,
+                user.Status,
+                JwtConst.ACCESS_TOKEN_EXP
+            );
+
+            // Lưu Redis Session
+            try
+            {
+                await _cacheService.Set($"ss:{user.Id}:{sessionId}", true, TimeSpan.FromSeconds(JwtConst.ACCESS_TOKEN_EXP));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Không thể lưu session vào Redis khi Google Login: {Message}", ex.Message);
+            }
+
+            return new AuthResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = user.RefreshToken!,
+                TokenType = "Bearer",
+                ExpiresIn = JwtConst.ACCESS_TOKEN_EXP,
+                User = MapToUserProfile(user, userRole)
+            };
         }
 
         public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)
@@ -237,6 +415,15 @@ namespace Mimo.Application.Services
                 JwtConst.ACCESS_TOKEN_EXP
             );
 
+            try
+            {
+                await _cacheService.Set($"ss:{user.Id}:{sessionId}", true, TimeSpan.FromSeconds(JwtConst.ACCESS_TOKEN_EXP));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Không thể lưu session vào Redis khi refresh token: {Message}", ex.Message);
+            }
+
             return new AuthResponseDto
             {
                 AccessToken = newAccessToken,
@@ -245,6 +432,54 @@ namespace Mimo.Application.Services
                 ExpiresIn = JwtConst.ACCESS_TOKEN_EXP,
                 User = MapToUserProfile(user, roleName)
             };
+        }
+
+        public async Task<bool> LogoutAsync(Guid userId, Guid sessionId)
+        {
+            // 1. Xóa session trong Redis
+            try
+            {
+                await _cacheService.Remove($"ss:{userId}:{sessionId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Lỗi khi xóa session khỏi Redis: {Message}", ex.Message);
+            }
+
+            // 2. Thu hồi Refresh Token trong CSDL
+            var user = await _userRepository.FindByIdAsync(userId);
+            if (user != null)
+            {
+                user.RefreshToken = null;
+                user.RefreshTokenExpiryTime = null;
+                await _userRepository.UpdateAsync(user);
+            }
+
+            return true;
+        }
+
+        public async Task<bool> ForceLogoutAsync(Guid userId)
+        {
+            // 1. Force logout tất cả session trong Redis
+            try
+            {
+                await _cacheService.ForceLogout(userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Lỗi khi ForceLogout trên Redis: {Message}", ex.Message);
+            }
+
+            // 2. Hủy toàn bộ refresh token
+            var user = await _userRepository.FindByIdAsync(userId);
+            if (user != null)
+            {
+                user.RefreshToken = null;
+                user.RefreshTokenExpiryTime = null;
+                await _userRepository.UpdateAsync(user);
+            }
+
+            return true;
         }
 
         private static UserProfileDto MapToUserProfile(User user, string? roleName = null)
