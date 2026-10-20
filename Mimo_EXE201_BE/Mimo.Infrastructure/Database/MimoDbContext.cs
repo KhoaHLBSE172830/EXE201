@@ -57,17 +57,19 @@ public class MimoDbContext : DbContext
             entity.Property(r => r.Status).HasConversion<string>();
         });
 
-        // Seed 4 default roles
+        // Seed default roles
         var adminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var studentRoleId = Guid.Parse("22222222-2222-2222-2222-222222222222");
         var curatorRoleId = Guid.Parse("33333333-3333-3333-3333-333333333333");
         var orgRoleId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+        var educatorRoleId = Guid.Parse("55555555-5555-5555-5555-555555555555");
 
         modelBuilder.Entity<Role>().HasData(
             new Role { Id = adminRoleId, RoleName = "Admin", Description = "Quản trị viên toàn hệ thống", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Role { Id = studentRoleId, RoleName = "Student", Description = "Học sinh / Người học kỹ năng", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Role { Id = curatorRoleId, RoleName = "Curator", Description = "Giảng viên / Biên tập kịch bản bài giảng", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Role { Id = orgRoleId, RoleName = "Organization", Description = "Đại diện tổ chức / Trường học B2B", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new Role { Id = orgRoleId, RoleName = "Organization", Description = "Đại diện tổ chức / Trường học B2B", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Role { Id = educatorRoleId, RoleName = "Educator", Description = "Giáo viên / Giảng viên thuộc trường học / tổ chức", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
 
         // 2. Organizations

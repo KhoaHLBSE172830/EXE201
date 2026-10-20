@@ -21,6 +21,10 @@ namespace Mimo.Infrastructure.Database
         private readonly ILogger<DatabaseSeeder> _logger;
 
         public static readonly Guid AdminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        public static readonly Guid StudentRoleId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        public static readonly Guid CuratorRoleId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        public static readonly Guid OrganizationRoleId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+        public static readonly Guid EducatorRoleId = Guid.Parse("55555555-5555-5555-5555-555555555555");
         public const string DefaultAdminUsername = "mimo.Admin";
         public const string DefaultAdminPassword = "Admin123!";
         public const string DefaultAdminEmail = "admin@mimo.app";
@@ -50,16 +54,13 @@ namespace Mimo.Infrastructure.Database
 
         private async Task SeedRolesAsync()
         {
-            var studentRoleId = Guid.Parse("22222222-2222-2222-2222-222222222222");
-            var curatorRoleId = Guid.Parse("33333333-3333-3333-3333-333333333333");
-            var orgRoleId = Guid.Parse("44444444-4444-4444-4444-444444444444");
-
             var defaultRoles = new[]
             {
                 new Role { Id = AdminRoleId, RoleName = "Admin", Description = "Quản trị viên toàn hệ thống", Status = RoleStatusEnum.Active },
-                new Role { Id = studentRoleId, RoleName = "Student", Description = "Học sinh / Người học kỹ năng", Status = RoleStatusEnum.Active },
-                new Role { Id = curatorRoleId, RoleName = "Curator", Description = "Giảng viên / Biên tập kịch bản bài giảng", Status = RoleStatusEnum.Active },
-                new Role { Id = orgRoleId, RoleName = "Organization", Description = "Đại diện tổ chức / Trường học B2B", Status = RoleStatusEnum.Active }
+                new Role { Id = StudentRoleId, RoleName = "Student", Description = "Học sinh / Người học kỹ năng", Status = RoleStatusEnum.Active },
+                new Role { Id = CuratorRoleId, RoleName = "Curator", Description = "Giảng viên / Biên tập kịch bản bài giảng", Status = RoleStatusEnum.Active },
+                new Role { Id = OrganizationRoleId, RoleName = "Organization", Description = "Đại diện tổ chức / Trường học B2B", Status = RoleStatusEnum.Active },
+                new Role { Id = EducatorRoleId, RoleName = "Educator", Description = "Giáo viên / Giảng viên thuộc trường học / tổ chức", Status = RoleStatusEnum.Active }
             };
 
             foreach (var role in defaultRoles)

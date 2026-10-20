@@ -171,6 +171,16 @@ namespace Mimo.API.Controllers
         {
             return SuccessResp.Ok(new { message = "Xin chào Tổ chức B2B! Bạn có quyền quản trị trường học và lớp học." });
         }
+
+        /// <summary>
+        /// Endpoint kiểm tra phân quyền cho Role Educator hoặc Admin
+        /// </summary>
+        [HttpGet("educator-only")]
+        [RequireRoles(UserRoleEnum.Educator, UserRoleEnum.Admin)]
+        public IActionResult EducatorOnly()
+        {
+            return SuccessResp.Ok(new { message = "Xin chào Giáo viên / Educator! Bạn có quyền quản lý lớp học và theo dõi học sinh." });
+        }
     }
 }
 
