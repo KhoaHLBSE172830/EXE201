@@ -36,40 +36,62 @@ MIMO ứng dụng triệt để **công thức thành công của Duolingo** và
 
 ## 2. CÁC PHÂN HỆ VÀ VAI TRÒ NGƯỜI DÙNG (ROLES)
 
-Hệ thống được thiết kế hoàn chỉnh gồm **4 Role chính**:
+Hệ thống được thiết kế hoàn chỉnh gồm **5 Vai trò độc lập (5 Distinct Roles)**:
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                     HỆ THỐNG MIMO                                      │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-         │                          │                         │                    │
-         ▼                          ▼                         ▼                    ▼
-   [ 1. STUDENT ]          [ 2. CURATOR ]            [ 3. ORGANIZATION ]     [ 4. ADMIN ]
-     (Học sinh)              (Giảng viên)                 (Tổ chức B2B)      (Chủ hệ thống)
- • Học theo lộ trình       • Soạn kịch bản (CMS)      • Quản lý lớp/nhóm     • Quản trị hệ thống
- • Giải quyết tình huống   • Xây dựng cây kỹ năng     • Cấp/mời học sinh     • Phân quyền & User
- • Đua BXH, Streak, Tim    • Kiểm duyệt & đo lỗi      • Giao bài tập tuần    • Quản lý gói B2B/B2C
- • Nhận bài từ lớp học     • Tối ưu chất lượng bài    • Báo cáo rủi ro lớp   • Thống kê toàn diện
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                  HỆ THỐNG PHÂN QUYỀN MIMO (5 ROLES)                                    │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+        │                   │                       │                      │                   │
+        ▼                   ▼                       ▼                      ▼                   ▼
+  [ 1. LEARNER ]     [ 2. CURATOR ]        [ 3. ORGANIZATION ]     [ 4. EDUCATOR ]       [ 5. ADMIN ]
+   (Người học)      (Chuyên gia ĐỘC LẬP)      (Ban Giám Hiệu)     (Giáo viên trường)   (Chủ hệ thống)
+• Học theo lộ trình • Độc lập với trường    • Đại diện trường B2B • Trực thuộc trường  • Quản trị hệ thống
+• Xử lý tình huống  • Bác sĩ, CS PCCC...    • Mua & quản lý gói   • Nhận mã kích hoạt  • Thẩm định Curator
+• Đua BXH, Streak   • Soạn kịch bản chuẩn     bản quyền (Seats)   • Quản lý lớp học    • Duyệt bài phát hành
+• Làm bài tập trường• Viết giải thích y tế  • Cấp mã cho giáo viên• Chiếu QR vào lớp  • Cấu hình Game
+• Nhận xét, huy hiệu• Không thuộc trường    • Xuất báo cáo Sở     • Giao bài, nhắc nộp • Doanh thu B2B/B2C
 ```
 
-### 🎓 Role 1: Học sinh (Student - B2C & B2B End-User)
+### 🎓 Role 1: Người học (Learner / Student - B2C & B2B End-User)
 * **Đối tượng:** Học sinh các cấp (Tiểu học, THCS, THPT), sinh viên đại học hoặc người học cá nhân tự do; bao gồm cả học sinh tham gia theo lớp do trường/tổ chức giáo dục quản lý.
 * **Nhu cầu:** Học kỹ năng an toàn sinh tồn một cách lôi cuốn, dễ hiểu, tương tác trực tiếp qua bài tập tình huống dạng game, tích lũy điểm kinh nghiệm (XP), giữ chuỗi ngày (Streak), bảo toàn Tim và hoàn thành nhiệm vụ được giao từ nhà trường.
 * **Môi trường tiếp cận:** Web App (responsive mobile-first) hoặc Mobile App.
 
-### ✍️ Role 2: Giảng viên / Chuyên gia biên tập (Curator - Content Creator)
-* **Đối tượng:** Giảng viên, giáo viên chuyên môn, đội ngũ cố vấn an toàn (chuyên gia PCCC, bác sĩ cấp cứu, chuyên gia an ninh mạng, tâm lý học đường).
-* **Nhu cầu:** Thiết kế và xây dựng lộ trình học tập (Skill Tree), biên soạn ngân hàng tình huống tương tác (Scenario Builder), cấu hình câu hỏi, chuẩn hóa lời giải thích y tế/kỹ thuật an toàn và theo dõi phân tích tỷ lệ sai sót của học sinh để liên tục tối ưu hóa bài giảng.
-* **Môi trường tiếp cận:** Curator CMS Portal trên Web.
+### ✍️ Role 2: Chuyên gia Biên soạn Độc lập (Content Curator - Global Domain Expert)
+* **Đối tượng:** Chuyên gia y tế cấp cứu (Bác sĩ 115), Cán bộ Cảnh sát PCCC & CNCH, Chuyên gia an toàn giao thông, Kỹ sư an ninh mạng, Giảng viên chuyên ngành an toàn sinh tồn.
+* **Đặc tính cốt lõi:** **Độc lập hoàn toàn với các trường học** (không thuộc biên chế bất kỳ trường nào). Được ký hợp đồng chuyên môn và chịu sự thẩm định, phê chuẩn trực tiếp từ Ban Quản trị MIMO.
+* **Nhu cầu:** Cung cấp công cụ xưởng sáng tạo (Curator Studio) để thiết kế lộ trình học tập (Skill Tree), biên soạn ngân hàng tình huống tương tác thực tế, viết giải thích y khoa/kỹ thuật an toàn chuẩn mực, chơi thử nghiệm trên Mobile Simulator và gửi bài lên hàng chờ Admin duyệt phát hành cho **toàn bộ người học trên toàn hệ thống**.
+* **Môi trường tiếp cận:** Curator Studio Web Portal.
 
-### 🏢 Role 3: Tổ chức / Công ty giáo dục (Organization - B2B Client)
-* **Đối tượng:** Ban giám hiệu nhà trường, công ty giáo dục, trung tâm đào tạo kỹ năng, doanh nghiệp muốn đào tạo an toàn nội bộ hoặc phụ huynh theo nhóm.
-* **Nhu cầu:** Mua và quản lý gói tài khoản bản quyền B2B (Seat licenses); quản lý cấu trúc trường/lớp/nhóm học viên; tạo mã lớp (Class Code) để mời học sinh; phân công giảng viên (Curator) phụ trách; giao nhiệm vụ an toàn định kỳ và theo dõi dashboard phân tích rủi ro an toàn của từng tập thể.
-* **Môi trường tiếp cận:** Organization B2B Dashboard trên Web.
+### 🏛️ Role 3: Ban Giám Hiệu / Quản lý Nhà trường (Organization / School Admin - B2B Client)
+* **Đối tượng:** Ban Giám hiệu nhà trường (Hiệu trưởng, Hiệu phó), Phòng Đào tạo/Công tác học sinh, Quản lý doanh nghiệp hoặc trung tâm giáo dục kỹ năng.
+* **Nhu cầu:** 
+  * Mua và quản lý hợp đồng bản quyền B2B số lượng lớn (Seat licenses);
+  * Giám sát Chỉ số Sức khỏe An toàn Học đường (School Safety Index - SSI) cấp vĩ mô toàn trường;
+  * Sinh **Mã bản quyền Giáo viên** (Teacher Activation Codes) kèm phân công lớp phụ trách để bàn giao cho các thầy/cô;
+  * Xuất file Báo cáo Khảo sát An toàn Học đường chính quy (định dạng PDF chuẩn thể thức có chữ ký số) nộp Sở GD&ĐT và Công an PCCC địa phương.
+* **Môi trường tiếp cận:** School Organization B2B Dashboard trên Web.
 
-### ⚙️ Role 4: Chủ hệ thống (Admin - System Owner)
+### 👨‍🏫 Role 4: Giáo viên Trường học (School Educator / Teacher)
+* **Đối tượng:** Giáo viên chủ nhiệm, Giáo viên bộ môn (Giáo dục Quốc phòng - An ninh, Sinh học, Hoạt động trải nghiệm, GDCD) trực thuộc một trường học cụ thể (`OrganizationId`).
+* **Cơ chế cấp quyền:** Được Ban Giám Hiệu trường cấp Mã bản quyền Giáo viên; giáo viên nhập mã để tự động nhận các lớp học được phân công phụ trách.
+* **Nhu cầu:**
+  * Quản lý danh sách học sinh theo từng lớp học cụ thể (vd: Lớp 10A1, 10A2);
+  * Kích hoạt chế độ **Chiếu mã QR lên máy chiếu/TV lớp học** để 100% học sinh trong lớp quét tham gia chỉ trong 15 giây;
+  * Giao bài tập kỹ năng tình huống định kỳ theo tuần (đặt hạn nộp bài);
+  * Xem danh sách học sinh chưa nộp bài hoặc chọn sai phương án an toàn khẩn cấp, bấm nút 1-chạm gửi thông báo nhắc nhở đẩy về điện thoại học sinh và dùng dữ liệu để giải thích trong tiết sinh hoạt lớp.
+  * *Lưu ý:* Giáo viên trường không có quyền sửa đổi hay can thiệp vào kho học liệu chuẩn của hệ thống do Curator biên soạn.
+* **Môi trường tiếp cận:** Educator Class Management Portal trên Web/Tablet.
+
+### ⚙️ Role 5: Chủ hệ thống / Quản trị viên Tối cao (Super Admin & System Operations)
 * **Đối tượng:** Đội ngũ sáng lập, quản trị viên cấp cao của nền tảng MIMO.
-* **Nhu cầu:** Kiểm soát và vận hành toàn diện hệ thống: quản lý tài khoản người dùng, phân quyền (RBAC), quản lý danh sách và hợp đồng tổ chức B2B, quản lý gói dịch vụ/doanh thu, cấu hình tham số gamification (XP, Tim, Streak), giám sát hiệu năng, bảo mật và xem báo cáo phân tích toàn hệ thống (DAU, MAU, Retention).
+* **Nhu cầu:** 
+  * Kiểm soát và vận hành toàn diện hệ thống: quản lý người dùng theo 5 vai trò (RBAC);
+  * Thẩm định hồ sơ công tác chuyên môn, cấp tài khoản và phân bổ chuyên đề (Domain) cho Chuyên gia Curator;
+  * Đóng vai trò **Người gác cổng tối cao (The Gatekeeper)**: Ký duyệt lần cuối (Final sign-off) các bài học của Curator trước khi phát hành Live;
+  * Quản lý hợp đồng đối tác trường học B2B, quản lý tài chính doanh thu định kỳ (MRR);
+  * Cấu hình tham số Game hóa (Tim, XP, Chuỗi Streak, Leagues) và giám sát báo cáo rủi ro an toàn toàn quốc.
 * **Môi trường tiếp cận:** Super Admin Portal nội bộ.
 
 ---
@@ -173,53 +195,56 @@ Khác với danh sách video nhàm chán, học liệu của Mimo được tổ 
    * Thống kê tổng số ngày Streak, tổng XP, số bài học đã hoàn thành.
    * Bộ sưu tập danh hiệu, huy hiệu an toàn (Badges) đã mở khóa.
 
-### 5.2. Phân hệ Giảng viên / Chuyên gia biên tập (Curator CMS Portal)
-1. **Quản lý Cây Kỹ năng & Lộ trình (Learning Path Management):**
-   * Thiết lập và sắp xếp các Chủ đề lớn (Domain) ➔ Chặng kỹ năng (Units) ➔ Nút bài học (Nodes).
-   * Cấu hình điều kiện mở khóa bài học, điểm thưởng XP và vị trí các bài kiểm tra chặng (Boss Challenge).
+### 5.2. Phân hệ Chuyên gia Biên soạn Độc lập (Curator Studio Portal)
+1. **Quản lý Cây Kỹ năng & Lộ trình Chuẩn mực:**
+   * Thiết lập và sắp xếp các Chủ đề lớn (Domain) ➔ Chặng kỹ năng (Units) ➔ Nút bài học (Nodes) dùng chung cho toàn bộ người học trên hệ thống.
+   * Cấu hình điều kiện mở khóa bài học, điểm thưởng XP và các bài kiểm tra chặng (Boss Challenge).
 2. **Trình biên soạn kịch bản tình huống (Scenario Builder):**
-   * Tạo câu hỏi tình huống linh hoạt theo 3 định dạng: Quyết định tình huống (Scenario Choice), Sắp xếp quy trình (Sequencing Steps), Vạch lá tìm sâu (Spot the Red Flag).
-   * Tải lên hình ảnh mô phỏng, gif trực quan cho tình huống.
-   * Soạn thảo lời giải thích chuyên môn: Phân tích vì sao đúng, vì sao nguy hiểm theo chuẩn an toàn PCCC, y tế hoặc an ninh mạng.
-3. **Ngân hàng dữ liệu câu hỏi (Question Bank):**
-   * Phân loại câu hỏi theo độ khó, chủ đề, tag kỹ năng.
-   * Tái sử dụng câu hỏi cho các bài ôn tập (Practice mode) hoặc bài kiểm tra định kỳ của trường học.
+   * Tạo câu hỏi tình huống tương tác theo các định dạng: Quyết định tình huống (Scenario Choice), Sắp xếp quy trình (Sequencing Steps), Vạch lá tìm sâu (Spot the Red Flag).
+   * Tải lên hình ảnh mô phỏng, gif trực quan cho tình huống khẩn cấp.
+   * Soạn thảo lời giải thích chuyên môn: Phân tích vì sao đúng, vì sao nguy hiểm theo chuẩn y khoa, an toàn PCCC hoặc an ninh mạng.
+3. **Mô phỏng trải nghiệm & Hàng chờ thẩm định:**
+   * Trực tiếp chơi thử bộ câu hỏi trên **Mobile Simulator** tích hợp sẵn trong Curator Studio để kiểm tra độ dài câu chữ và nhịp điệu game.
+   * Gửi bài học lên Hàng chờ Phê duyệt của Super Admin; tiếp nhận phản hồi yêu cầu chỉnh sửa nếu có sai sót.
 4. **Báo cáo chất lượng học liệu (Content Quality Analytics):**
-   * Thống kê tỷ lệ chọn sai từng câu hỏi để phát hiện câu hỏi gây khó hiểu hoặc kiến thức học sinh hay hiểu sai để điều chỉnh nội dung kịp thời.
+   * Thống kê tỷ lệ học viên cả nước chọn sai từng câu hỏi để tối ưu hóa phác đồ và nội dung kịch bản kịp thời.
 
-### 5.3. Phân hệ Tổ chức & Công ty giáo dục (Organization B2B Portal)
-1. **Quản lý Tổ chức & Cơ cấu Lớp học:**
-   * Thiết lập hồ sơ trường học, trung tâm hoặc doanh nghiệp giáo dục.
-   * Quản lý danh sách lớp học, phân khối, phòng ban hoặc nhóm rèn luyện.
-   * Tạo và cấp **Mã Lớp (Class Code)** hoặc gửi link mời học sinh tự tham gia.
-   * Nhập danh sách học sinh hàng loạt bằng file Excel/CSV và quản lý sĩ số.
-2. **Phân công & Phối hợp Giảng viên (Curator Assignment):**
-   * Phân quyền giáo viên/Curator phụ trách từng lớp học cụ thể.
-3. **Trung tâm Giao nhiệm vụ & Đợt kiểm tra (Assignment Center):**
-   * Lựa chọn chủ đề cần rèn luyện (ví dụ: *"Chuyên đề: Kỹ năng PCCC & Thoát hiểm chung cư"*).
-   * Cấu hình thời hạn hoàn thành (deadline) và chỉ tiêu đạt chuẩn (ví dụ: hoàn thành trước Chủ nhật, đạt tối thiểu 80% điểm).
-4. **Báo cáo Tiến độ & Phân tích Rủi ro An toàn (Safety Risk Analytics Dashboard):**
-   * Theo dõi tỷ lệ học sinh tham gia và hoàn thành bài tập theo từng lớp hoặc toàn trường.
-   * **Bản đồ nhiệt rủi ro (Risk Heatmap):** Nhận diện chính xác kỹ năng nào học sinh trong trường đang yếu hoặc trả lời sai nhiều nhất, hỗ trợ giáo viên nhắc nhở trực tiếp trong tiết sinh hoạt lớp.
-   * Xuất báo cáo chứng nhận an toàn định kỳ (PDF/Excel) gửi ban giám hiệu hoặc đối tác quản lý.
-5. **Quản lý Gói bản quyền B2B (Seat Subscription):**
-   * Theo dõi số lượng tài khoản (seats) đã kích hoạt / còn trống, hạn sử dụng hợp đồng B2B.
+### 5.3. Phân hệ Ban Giám Hiệu / Quản lý Nhà trường (School Organization B2B Portal)
+1. **Quản lý Hợp đồng & Gói bản quyền B2B (Seat Subscription):**
+   * Theo dõi số lượng tài khoản (seats) đã kích hoạt / còn trống, thời hạn hợp đồng bản quyền của trường.
+2. **Quản lý & Cấp Mã Bản Quyền Giáo Viên (Teacher License Provisioning):**
+   * Ban Giám Hiệu sinh **Mã kích hoạt Giáo viên** (Teacher Activation Codes) kèm chỉ định các khối/lớp phân công phụ trách.
+   * Bàn giao mã qua Email/Zalo nội bộ cho thầy/cô để giáo viên tự kích hoạt nhận quyền.
+3. **Giám sát Chỉ số Sức khỏe An toàn Toàn trường (School Safety Index - SSI):**
+   * Theo dõi bức tranh tổng thể mức độ sẵn sàng ứng phó rủi ro an toàn của toàn trường qua 5 trụ cột kỹ năng.
+   * So sánh tỷ lệ hoàn thành kỹ năng giữa các khối lớp (K10, K11, K12).
+4. **Xuất Hồ sơ Báo cáo An toàn Chính quy (Official Safety Audit Report):**
+   * Xuất báo cáo định dạng PDF/Excel chuẩn thể thức văn bản nhà nước (có chữ ký số của Hiệu trưởng và mộc điện tử MIMO) để nộp trực tiếp cho **Sở GD&ĐT** và **Công an PCCC** khi có đợt kiểm tra an toàn học đường.
 
-### 5.4. Phân hệ Quản trị Hệ thống (Admin Portal - Chủ hệ thống)
-1. **Quản trị Tài khoản & Phân quyền (RBAC):**
-   * Quản lý toàn bộ danh sách tài khoản theo 4 vai trò: Student, Curator, Organization, Admin.
-   * Khóa / mở khóa tài khoản, kích hoạt quyền Curator, phê duyệt tổ chức B2B mới đăng ký.
-   * Hỗ trợ kỹ thuật người dùng (khôi phục Streak khi xảy ra lỗi hệ thống, kiểm tra lịch sử học tập).
-2. **Quản lý Tổ chức B2B & Hợp đồng (B2B Client Management):**
-   * Duyệt tạo tổ chức, cấu hình hạn mức tài khoản (seats) cho từng trường học/công ty.
-   * Theo dõi tình trạng hợp đồng, gia hạn bản quyền và lịch sử thanh toán B2B.
-3. **Cấu hình Tham số Nền tảng (Platform & Gamification Settings):**
-   * Tinh chỉnh các thông số Gamification: Thời gian hồi Tim, điểm XP cơ bản, hệ số Combo, mốc thăng/rớt hạng League tuần.
-   * Quản lý danh mục chủ đề kỹ năng hệ thống và cấu hình thông báo hệ thống (Push Notifications).
-4. **Trung tâm Báo cáo & Phân tích Toàn diện (System Master Analytics):**
-   * Theo dõi các chỉ số tăng trưởng: DAU, MAU, lượng đăng ký mới B2C và B2B.
-   * Báo cáo giữ chân người dùng (Retention Rate: Day 1, Day 7, Day 30).
-   * Báo cáo doanh thu chi tiết từ các nguồn: Gói cá nhân Mimo Pro, hợp đồng bản quyền B2B và tài trợ thương hiệu (CSR).
+### 5.4. Phân hệ Giáo viên Trường học (School Educator Portal)
+1. **Quản lý Lớp học & Học sinh (Classroom Roster):**
+   * Quản lý danh sách học sinh theo các lớp được Ban Giám Hiệu phân công (vd: Lớp 10A1, 10A2).
+   * **Chế độ Chiếu mã QR lên bảng (Presentation Mode):** Giáo viên chiếu mã QR của lớp lên máy chiếu/TV trong tiết sinh hoạt đầu năm để học sinh quét vào lớp trong 15 giây.
+2. **Trung tâm Giao bài tập Kỹ năng tuần (Assignment Center):**
+   * Lựa chọn chủ đề an toàn phù hợp với kế hoạch giáo dục của trường (ví dụ: *"Tuần 3: Thoát hiểm hỏa hoạn nhà cao tầng"*).
+   * Đặt thời hạn hoàn thành (deadline) và chỉ tiêu điểm chuẩn.
+3. **Bản đồ nhiệt Rủi ro & Nhắc nhở Một chạm (Risk Heatmap & 1-Click Reminder):**
+   * Theo dõi tiến độ nộp bài của từng học sinh theo thời gian thực.
+   * Nhận diện các câu hỏi tình huống có trên 50% học sinh trong lớp chọn sai phương án (ví dụ: bôi kem đánh răng vào vết bỏng).
+   * Bấm nút gửi thông báo đẩy (push notification) nhắc nhở học sinh chưa làm bài trước hạn chót.
+   * Sử dụng dữ liệu báo cáo để dành 3-5 phút giải thích lỗi sai cho cả lớp trong tiết sinh hoạt cuối tuần.
+
+### 5.5. Phân hệ Quản trị Hệ thống (Admin Portal - Chủ hệ thống)
+1. **Quản trị Tài khoản & Phân quyền RBAC 5 Roles:**
+   * Quản lý danh sách toàn bộ người dùng theo 5 vai trò: Learner, Curator, Organization, Educator, Admin.
+   * Khóa / mở khóa tài khoản, thẩm định hồ sơ và cấp tài khoản cho Chuyên gia Curator.
+2. **Người Gác Cổng Tối Cao & Thẩm định Xuất bản (Content Approval Gatekeeper):**
+   * Trực tiếp trải nghiệm kịch bản của Curator trên Giả lập; bấm ký duyệt phát hành (Publish Live) hoặc yêu cầu sửa đổi kèm ghi chú chi tiết.
+   * Thu hồi khẩn cấp (Emergency Rollback) bài học khi phát hiện sai lệch phác đồ an toàn.
+3. **Quản lý Đối tác Trường học B2B & Hợp đồng Doanh thu:**
+   * Khởi tạo tổ chức trường học mới, cấu hình hạn mức Seats và quản lý doanh thu B2B/B2C.
+4. **Cấu hình Tham số Nền tảng (Platform & Gamification Balancing):**
+   * Tinh chỉnh thời gian hồi Tim, điểm XP, hệ số Combo, mốc League tuần và quản trị thông báo toàn hệ thống.
 
 ---
 
