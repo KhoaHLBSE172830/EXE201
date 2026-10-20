@@ -33,6 +33,15 @@ namespace Mimo.DomainLayer.Entities
 
         public OrganizationStatusEnum Status { get; set; } = OrganizationStatusEnum.Active;
 
+        public SubscriptionTierEnum SubscriptionTier { get; set; } = SubscriptionTierEnum.Free;
+
+        [NotMapped]
+        public string OrgName
+        {
+            get => Name;
+            set => Name = value;
+        }
+
         public virtual ICollection<User> Users { get; set; } = new List<User>();
     }
 }
