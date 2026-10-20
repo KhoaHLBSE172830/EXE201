@@ -24,6 +24,8 @@ public class MimoDbContext : DbContext
     public DbSet<Certificate> Certificates { get; set; } = null!;
     public DbSet<Review> Reviews { get; set; } = null!;
     public DbSet<Transaction> Transactions { get; set; } = null!;
+    public DbSet<UserProfile> UserProfiles { get; set; } = null!;
+    public DbSet<UserStats> UserStats { get; set; } = null!;
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -80,7 +82,13 @@ public class MimoDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasIndex(u => u.Email).IsUnique();
+            entity.HasIndex(u => u.UserName).IsUnique();
             entity.Property(u => u.Status).HasConversion<string>();
+
+            // Enforce strictly ONE Admin user across the entire database (Partial Unique Index)
+            entity.HasIndex(u => u.RoleId)
+                  .IsUnique()
+                  .HasFilter($"\"RoleId\" = '{adminRoleId}'");
 
             entity.HasOne(u => u.Role)
                   .WithMany(r => r.Users)
@@ -91,6 +99,16 @@ public class MimoDbContext : DbContext
                   .WithMany(o => o.Users)
                   .HasForeignKey(u => u.OrganizationId)
                   .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(u => u.Profile)
+                  .WithOne(p => p.User)
+                  .HasForeignKey<UserProfile>(p => p.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(u => u.Stats)
+                  .WithOne(s => s.User)
+                  .HasForeignKey<UserStats>(s => s.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // 4. Courses

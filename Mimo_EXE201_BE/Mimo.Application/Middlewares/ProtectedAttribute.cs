@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,11 +10,11 @@ using Mimo.DomainLayer.Constants;
 
 namespace Mimo.Application.Middlewares;
 
-// Middleware to protect routes
+// Middleware to protect routes with JWT and active Redis session verification
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true, AllowMultiple = false)]
-public class ProtectedAttribute : Attribute, IAuthorizationFilter
+public class ProtectedAttribute : Attribute, IAsyncAuthorizationFilter
 {
-    public void OnAuthorization(AuthorizationFilterContext context)
+    public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var authHeader = context.HttpContext.Request.Headers["Authorization"].ToString();
 
@@ -38,6 +39,29 @@ public class ProtectedAttribute : Attribute, IAuthorizationFilter
                 return;
             }
 
+            // Kiểm tra trạng thái phiên làm việc (Session) trong Redis
+            if (payload.SessionId != Guid.Empty)
+            {
+                try
+                {
+                    var cacheService = context.HttpContext.RequestServices.GetService<ICacheService>();
+                    if (cacheService != null)
+                    {
+                        var isSessionActive = await cacheService.Exists($"ss:{payload.UserId}:{payload.SessionId}");
+                        if (!isSessionActive)
+                        {
+                            context.HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                            context.Result = ErrorResp.Unauthorized("Phiên đăng nhập đã kết thúc hoặc đã bị thu hồi.");
+                            return;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Graceful fallback nếu Redis offline tạm thời
+                }
+            }
+
             // add payload to context
             context.HttpContext.Items[JwtConst.PAYLOAD_KEY] = payload;
         }
@@ -49,3 +73,4 @@ public class ProtectedAttribute : Attribute, IAuthorizationFilter
         }
     }
 }
+

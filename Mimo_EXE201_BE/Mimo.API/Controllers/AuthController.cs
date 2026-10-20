@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Mimo.Application.DTOs;
 using Mimo.Application.DTOs.Auth;
+using Mimo.Application.DTOs.User;
 using Mimo.Application.Middlewares;
 using Mimo.Application.ResponseCode;
 using Mimo.Application.Services;
@@ -20,10 +21,12 @@ namespace Mimo.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IUserService _userService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IUserService userService)
         {
             _authService = authService;
+            _userService = userService;
         }
 
         /// <summary>
@@ -41,7 +44,7 @@ namespace Mimo.API.Controllers
         }
 
         /// <summary>
-        /// Đăng nhập bằng Email và Password
+        /// Đăng nhập bằng Email/Username và Password
         /// </summary>
         [HttpPost("login")]
         [Consumes("application/json")]
@@ -54,32 +57,16 @@ namespace Mimo.API.Controllers
         }
 
         /// <summary>
-        /// Lấy thông tin tài khoản đang đăng nhập (Yêu cầu Bearer Token)
+        /// Đăng nhập / Đăng ký nhanh qua Google OAuth (ID Token)
         /// </summary>
-        [HttpGet("me")]
-        [Protected]
-        [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetCurrentUser()
+        [HttpPost("google")]
+        [Consumes("application/json")]
+        [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleAuthRequestDto request)
         {
-            // Lấy userId từ HttpContext Items đã được middleware/filter giải mã
-            if (HttpContext.Items.TryGetValue(JwtConst.PAYLOAD_KEY, out var payloadObj) && payloadObj is Payload payload)
-            {
-                var user = await _authService.GetCurrentUserAsync(payload.UserId);
-                return SuccessResp.Ok(user);
-            }
-
-            // Fallback: Lấy từ ClaimsPrincipal của .NET
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                ?? User.FindFirst("userId")?.Value;
-
-            if (Guid.TryParse(userIdClaim, out var userId))
-            {
-                var user = await _authService.GetCurrentUserAsync(userId);
-                return SuccessResp.Ok(user);
-            }
-
-            return ErrorResp.Unauthorized("Không thể xác định danh tính người dùng.");
+            var result = await _authService.GoogleLoginAsync(request);
+            return SuccessResp.Ok(result);
         }
 
         /// <summary>
@@ -94,6 +81,65 @@ namespace Mimo.API.Controllers
         {
             var result = await _authService.RefreshTokenAsync(request);
             return SuccessResp.Ok(result);
+        }
+
+        /// <summary>
+        /// Đăng xuất - Thu hồi session hiện tại trên Redis và hủy Refresh Token
+        /// </summary>
+        [HttpPost("logout")]
+        [Protected]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> Logout()
+        {
+            if (HttpContext.Items.TryGetValue(JwtConst.PAYLOAD_KEY, out var payloadObj) && payloadObj is Payload payload)
+            {
+                await _authService.LogoutAsync(payload.UserId, payload.SessionId);
+                return SuccessResp.Ok(new { message = "Đăng xuất thành công." });
+            }
+
+            return ErrorResp.Unauthorized("Không thể xác định phiên làm việc.");
+        }
+
+        /// <summary>
+        /// Buộc đăng xuất tất cả các phiên của một người dùng (Dành cho Quản trị viên - Admin)
+        /// </summary>
+        [HttpPost("force-logout/{userId}")]
+        [RequireRoles(UserRoleEnum.Admin)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> ForceLogout([FromRoute] Guid userId)
+        {
+            await _authService.ForceLogoutAsync(userId);
+            return SuccessResp.Ok(new { message = $"Đã thu hồi toàn bộ phiên đăng nhập của người dùng {userId}." });
+        }
+
+        /// <summary>
+        /// Lấy thông tin tài khoản đang đăng nhập (Yêu cầu Bearer Token)
+        /// </summary>
+        [HttpGet("me")]
+        [Protected]
+        [ProducesResponseType(typeof(UserDetailDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            if (HttpContext.Items.TryGetValue(JwtConst.PAYLOAD_KEY, out var payloadObj) && payloadObj is Payload payload)
+            {
+                var user = await _userService.GetMeAsync(payload.UserId);
+                return SuccessResp.Ok(user);
+            }
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                ?? User.FindFirst("userId")?.Value;
+
+            if (Guid.TryParse(userIdClaim, out var userId))
+            {
+                var user = await _userService.GetMeAsync(userId);
+                return SuccessResp.Ok(user);
+            }
+
+            return ErrorResp.Unauthorized("Không thể xác định danh tính người dùng.");
         }
 
         /// <summary>
@@ -127,3 +173,4 @@ namespace Mimo.API.Controllers
         }
     }
 }
+
