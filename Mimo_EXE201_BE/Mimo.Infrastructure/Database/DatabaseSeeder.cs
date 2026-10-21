@@ -18,6 +18,7 @@ namespace Mimo.Infrastructure.Database
     {
         private readonly MimoDbContext _context;
         private readonly ICryptoService _cryptoService;
+        private readonly ILeaderboardService _leaderboardService;
         private readonly ILogger<DatabaseSeeder> _logger;
 
         public static readonly Guid AdminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
@@ -32,10 +33,12 @@ namespace Mimo.Infrastructure.Database
         public DatabaseSeeder(
             MimoDbContext context,
             ICryptoService cryptoService,
+            ILeaderboardService leaderboardService,
             ILogger<DatabaseSeeder> logger)
         {
             _context = context;
             _cryptoService = cryptoService;
+            _leaderboardService = leaderboardService;
             _logger = logger;
         }
 
@@ -46,6 +49,7 @@ namespace Mimo.Infrastructure.Database
                 await SeedRolesAsync();
                 await SeedAdminUserAsync();
                 await SeedGameplayTestDataAsync();
+                await _leaderboardService.SeedMockLeaderboardUsersAsync();
             }
             catch (Exception ex)
             {
@@ -208,6 +212,9 @@ namespace Mimo.Infrastructure.Database
         public static readonly Guid Question1Id = Guid.Parse("d1111111-1111-1111-1111-111111111111");
         public static readonly Guid Question2Id = Guid.Parse("d2222222-2222-2222-2222-222222222222");
         public static readonly Guid Question3Id = Guid.Parse("d3333333-3333-3333-3333-333333333333");
+        public static readonly Guid Question4Id = Guid.Parse("d4444444-4444-4444-4444-444444444444");
+        public static readonly Guid Question5Id = Guid.Parse("d5555555-5555-5555-5555-555555555555");
+        public static readonly Guid Question6Id = Guid.Parse("d6666666-6666-6666-6666-666666666666");
 
         private async Task SeedGameplayTestDataAsync()
         {
@@ -345,6 +352,69 @@ namespace Mimo.Infrastructure.Database
                     _logger.LogInformation("Seeded Question 3 (Red Flag).");
                 }
 
+                var existingQ4 = await _context.Questions.FirstOrDefaultAsync(q => q.Id == Question4Id);
+                if (existingQ4 == null)
+                {
+                    existingQ4 = new Question
+                    {
+                        Id = Question4Id,
+                        Type = "choice",
+                        Title = "Nạn nhân bị mảnh kính cứa sâu vào cẳng tay, máu đỏ tươi phun thành tia liên tục. Việc sơ cứu khẩn cấp ĐẦU TIÊN đúng nhất là gì?",
+                        ImageUrl = "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80",
+                        Payload = "{\"options\":[{\"id\":\"A\",\"text\":\"Rắc ngay bột thuốc lào hoặc bột cà phê vào vết thương để bịt miệng máu\"},{\"id\":\"B\",\"text\":\"Dùng gạc hoặc khăn sạch ấn trực tiếp thật mạnh lên vết thương và băng ép chặt\"},{\"id\":\"C\",\"text\":\"Chỉ quấn băng lỏng và đặt tay thõng xuống chờ xe cấp cứu đến\"}]}",
+                        CorrectData = "{\"correctOptionId\":\"B\"}",
+                        Explanation = "Máu đỏ tươi phun thành tia là đứt động mạch. Biện pháp sống còn đầu tiên là dùng gạc vô trùng ấn trực tiếp và băng ép chặt lên vết thương để chặn sốc mất máu trước khi chuyển viện khẩn cấp.",
+                        Difficulty = "Medium",
+                        Source = "Bộ Y tế - Tài liệu tập huấn Sơ cấp cứu ban đầu toàn quốc",
+                        ReviewedBy = "BS. CKII Lê Hoàng Minh - BV Chợ Rẫy",
+                        Status = "Published"
+                    };
+                    await _context.Questions.AddAsync(existingQ4);
+                    _logger.LogInformation("Seeded Question 4 (Choice).");
+                }
+
+                var existingQ5 = await _context.Questions.FirstOrDefaultAsync(q => q.Id == Question5Id);
+                if (existingQ5 == null)
+                {
+                    existingQ5 = new Question
+                    {
+                        Id = Question5Id,
+                        Type = "sequence",
+                        Title = "Sắp xếp 4 bước chuẩn y tế trong quy trình băng ép cầm máu vết thương chảy máu ồ ạt:",
+                        ImageUrl = "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80",
+                        Payload = "{\"items\":[{\"id\":\"step_elevate\",\"text\":\"Nâng cao chi bị thương cao hơn mức tim nạn nhân (nếu không gãy xương)\"},{\"id\":\"step_gauze\",\"text\":\"Đặt miếng gạc sạch vô trùng trực tiếp che phủ miệng vết thương\"},{\"id\":\"step_wrap\",\"text\":\"Dùng băng cuộn băng ép chặt vòng quanh vết thương\"},{\"id\":\"step_press\",\"text\":\"Dùng lòng bàn tay ấn mạnh liên tục lên miếng gạc trong 5-10 phút\"}]}",
+                        CorrectData = "{\"correctOrder\":[\"step_gauze\",\"step_press\",\"step_wrap\",\"step_elevate\"]}",
+                        Explanation = "Quy trình chuẩn băng ép: 1. Đặt gạc sạch trực tiếp lên vết thương -> 2. Dùng tay ấn chặt giữ ép -> 3. Dùng băng cuộn quấn băng ép cố định -> 4. Nâng cao chi giảm áp lực máu dồn về.",
+                        Difficulty = "Medium",
+                        Source = "Hội Chữ thập đỏ Việt Nam - Sổ tay sơ cấp cứu cộng đồng",
+                        ReviewedBy = "Chuyên gia Cứu hộ Đỗ Văn Cường",
+                        Status = "Published"
+                    };
+                    await _context.Questions.AddAsync(existingQ5);
+                    _logger.LogInformation("Seeded Question 5 (Sequence).");
+                }
+
+                var existingQ6 = await _context.Questions.FirstOrDefaultAsync(q => q.Id == Question6Id);
+                if (existingQ6 == null)
+                {
+                    existingQ6 = new Question
+                    {
+                        Id = Question6Id,
+                        Type = "red_flag",
+                        Title = "Quan sát 4 hành động người nhà đang sơ cứu vết thương hở sau và chạm vào HÀNH VI NGUY HIỂM SAI LẦM:",
+                        ImageUrl = "https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=800&q=80",
+                        Payload = "{\"actions\":[{\"id\":\"wash_clean\",\"text\":\"Rửa xung quanh vết thương bằng nước muối sinh lý NaCl 0.9%\"},{\"id\":\"cover_sterile\",\"text\":\"Che phủ vết thương bằng gạc tiệt trùng y tế sạch\"},{\"id\":\"folk_powder\",\"text\":\"Rắc tro bếp nóng và thuốc lào trực tiếp vào vết thương để se miệng máu\"},{\"id\":\"tetanus_shot\",\"text\":\"Đưa nạn nhân đến trạm y tế gần nhất tiêm phòng uốn ván trong 24h\"}]}",
+                        CorrectData = "{\"selectedFlagId\":\"folk_powder\"}",
+                        Explanation = "Hành vi rắc tro bếp, bột than, thuốc lào, đắp lá cây lạ lên vết thương hở là hủ tục cực kỳ nguy hiểm, đưa hàng triệu vi khuẩn uốn ván trực tiếp vào máu gây hoại tử chi và tử vong.",
+                        Difficulty = "Hard",
+                        Source = "Bệnh viện Bệnh Nhiệt đới Trung ương - Cảnh báo phòng chống Uốn ván",
+                        ReviewedBy = "ThS. BS. Nguyễn Thị Lan",
+                        Status = "Published"
+                    };
+                    await _context.Questions.AddAsync(existingQ6);
+                    _logger.LogInformation("Seeded Question 6 (Red Flag).");
+                }
+
                 // 5. Link Questions to Node 1 via NodeQuestions
                 var link1 = await _context.NodeQuestions.AnyAsync(nq => nq.NodeId == DefaultNode1Id && nq.QuestionId == Question1Id);
                 if (!link1)
@@ -364,8 +434,27 @@ namespace Mimo.Infrastructure.Database
                     await _context.NodeQuestions.AddAsync(new NodeQuestion { NodeId = DefaultNode1Id, QuestionId = Question3Id, Order = 3 });
                 }
 
+                // 6. Link Questions to Node 2 via NodeQuestions (BUG-11 FIX: Node 2 đã có câu hỏi đầy đủ)
+                var link4 = await _context.NodeQuestions.AnyAsync(nq => nq.NodeId == DefaultNode2Id && nq.QuestionId == Question4Id);
+                if (!link4)
+                {
+                    await _context.NodeQuestions.AddAsync(new NodeQuestion { NodeId = DefaultNode2Id, QuestionId = Question4Id, Order = 1 });
+                }
+
+                var link5 = await _context.NodeQuestions.AnyAsync(nq => nq.NodeId == DefaultNode2Id && nq.QuestionId == Question5Id);
+                if (!link5)
+                {
+                    await _context.NodeQuestions.AddAsync(new NodeQuestion { NodeId = DefaultNode2Id, QuestionId = Question5Id, Order = 2 });
+                }
+
+                var link6 = await _context.NodeQuestions.AnyAsync(nq => nq.NodeId == DefaultNode2Id && nq.QuestionId == Question6Id);
+                if (!link6)
+                {
+                    await _context.NodeQuestions.AddAsync(new NodeQuestion { NodeId = DefaultNode2Id, QuestionId = Question6Id, Order = 3 });
+                }
+
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Hoàn tất Seeding dữ liệu Gameplay mẫu độc lập cho Nhánh B.");
+                _logger.LogInformation("Hoàn tất Seeding dữ liệu Gameplay mẫu hoàn chỉnh cho Node 1 và Node 2.");
             }
             catch (Exception ex)
             {
