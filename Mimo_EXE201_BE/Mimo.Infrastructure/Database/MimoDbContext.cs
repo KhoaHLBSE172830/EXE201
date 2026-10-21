@@ -125,6 +125,15 @@ public class MimoDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // 3b. UserStats (Optimistic Concurrency Token via PostgreSQL system xmin)
+        modelBuilder.Entity<UserStats>(entity =>
+        {
+            entity.Property<uint>("xmin")
+                  .HasColumnType("xid")
+                  .ValueGeneratedOnAddOrUpdate()
+                  .IsConcurrencyToken();
+        });
+
         // 4. Courses
         modelBuilder.Entity<Course>(entity =>
         {

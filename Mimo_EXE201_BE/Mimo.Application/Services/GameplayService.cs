@@ -18,6 +18,7 @@ namespace Mimo.Application.Services
         private readonly IGenericRepository<User> _userRepository;
         private readonly IGenericRepository<UserStats> _statsRepository;
         private readonly IGenericRepository<Node> _nodeRepository;
+        private readonly IGenericRepository<Unit> _unitRepository;
         private readonly IGenericRepository<NodeQuestion> _nodeQuestionRepository;
         private readonly IGenericRepository<Question> _questionRepository;
         private readonly IGenericRepository<LessonSession> _sessionRepository;
@@ -27,12 +28,14 @@ namespace Mimo.Application.Services
         private readonly IGenericRepository<XpEvent> _xpEventRepository;
         private readonly IQuestionGrader _questionGrader;
         private readonly IStreakService _streakService;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<GameplayService> _logger;
 
         public GameplayService(
             IGenericRepository<User> userRepository,
             IGenericRepository<UserStats> statsRepository,
             IGenericRepository<Node> nodeRepository,
+            IGenericRepository<Unit> unitRepository,
             IGenericRepository<NodeQuestion> nodeQuestionRepository,
             IGenericRepository<Question> questionRepository,
             IGenericRepository<LessonSession> sessionRepository,
@@ -42,11 +45,13 @@ namespace Mimo.Application.Services
             IGenericRepository<XpEvent> xpEventRepository,
             IQuestionGrader questionGrader,
             IStreakService streakService,
+            IUnitOfWork unitOfWork,
             ILogger<GameplayService> logger)
         {
             _userRepository = userRepository;
             _statsRepository = statsRepository;
             _nodeRepository = nodeRepository;
+            _unitRepository = unitRepository;
             _nodeQuestionRepository = nodeQuestionRepository;
             _questionRepository = questionRepository;
             _sessionRepository = sessionRepository;
@@ -56,6 +61,7 @@ namespace Mimo.Application.Services
             _xpEventRepository = xpEventRepository;
             _questionGrader = questionGrader;
             _streakService = streakService;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -96,6 +102,69 @@ namespace Mimo.Application.Services
                 throw new NotFoundException("Bài học không tồn tại hoặc chưa được xuất bản.");
             }
 
+            // BUG-02 FIX: Rào cản Cây Kỹ Năng (Skill Tree Gatekeeper) - Chặn nhảy cóc qua mặt lộ trình
+            var progress = await _progressRepository.FirstOrDefaultAsync(p => p.UserId == userId && p.NodeId == nodeId);
+            bool isUnlocked = false;
+
+            if (progress != null && (string.Equals(progress.Status, "current", StringComparison.OrdinalIgnoreCase) ||
+                                     string.Equals(progress.Status, "done", StringComparison.OrdinalIgnoreCase)))
+            {
+                isUnlocked = true;
+            }
+            else
+            {
+                var unit = await _unitRepository.FirstOrDefaultAsync(u => u.Id == node.UnitId);
+                if (unit != null)
+                {
+                    // Kiểm tra node liền trước trong cùng Unit
+                    var prevNodesInUnit = await _nodeRepository.WhereAsync(n =>
+                        n.UnitId == node.UnitId &&
+                        n.Order < node.Order &&
+                        string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                    var prevNode = prevNodesInUnit.OrderByDescending(n => n.Order).FirstOrDefault();
+
+                    if (prevNode != null)
+                    {
+                        var prevProg = await _progressRepository.FirstOrDefaultAsync(p => p.UserId == userId && p.NodeId == prevNode.Id);
+                        isUnlocked = prevProg != null && string.Equals(prevProg.Status, "done", StringComparison.OrdinalIgnoreCase);
+                    }
+                    else
+                    {
+                        // Đây là node đầu tiên của Unit -> Kiểm tra Unit trước đó trong cùng Domain
+                        var prevUnits = await _unitRepository.WhereAsync(u => u.DomainId == unit.DomainId && u.Order < unit.Order);
+                        var prevUnit = prevUnits.OrderByDescending(u => u.Order).FirstOrDefault();
+
+                        if (prevUnit != null)
+                        {
+                            var lastNodesOfPrevUnit = await _nodeRepository.WhereAsync(n =>
+                                n.UnitId == prevUnit.Id &&
+                                string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                            var lastNode = lastNodesOfPrevUnit.OrderByDescending(n => n.Order).FirstOrDefault();
+
+                            if (lastNode != null)
+                            {
+                                var lastProg = await _progressRepository.FirstOrDefaultAsync(p => p.UserId == userId && p.NodeId == lastNode.Id);
+                                isUnlocked = lastProg != null && string.Equals(lastProg.Status, "done", StringComparison.OrdinalIgnoreCase);
+                            }
+                            else
+                            {
+                                isUnlocked = true;
+                            }
+                        }
+                        else
+                        {
+                            // Là node đầu tiên của Unit đầu tiên trong Domain -> Mở khóa tự động
+                            isUnlocked = true;
+                        }
+                    }
+                }
+            }
+
+            if (!isUnlocked)
+            {
+                throw new BadRequestException("Bài học này đang bị khóa. Bạn phải hoàn thành các bài học trước đó trên lộ trình.");
+            }
+
             // 3. Lấy danh sách câu hỏi trong node qua NodeQuestions
             var nodeQuestions = await _nodeQuestionRepository.WhereAsync(nq => nq.NodeId == nodeId, "Question");
             var orderedNodeQuestions = nodeQuestions.OrderBy(nq => nq.Order).ToList();
@@ -122,8 +191,7 @@ namespace Mimo.Application.Services
             };
             session = await _sessionRepository.CreateAsync(session);
 
-            // 5. Cập nhật UserNodeProgress sang 'current' nếu chưa hoàn thành
-            var progress = await _progressRepository.FirstOrDefaultAsync(p => p.UserId == userId && p.NodeId == nodeId);
+            // 5. Cập nhật UserNodeProgress sang 'current' nếu là node hợp lệ
             if (progress == null)
             {
                 await _progressRepository.CreateAsync(new UserNodeProgress
@@ -194,6 +262,11 @@ namespace Mimo.Application.Services
                 throw new NotFoundException("Không tìm thấy phiên học.");
             }
 
+            if (string.Equals(session.Status, "failed", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BadRequestException("Phiên học đã thất bại trước đó do hết tim.");
+            }
+
             if (!string.Equals(session.Status, "in_progress", StringComparison.OrdinalIgnoreCase))
             {
                 throw new BadRequestException("Phiên học đã kết thúc hoặc không còn khả dụng.");
@@ -204,6 +277,14 @@ namespace Mimo.Application.Services
                 session.Status = "failed";
                 await _sessionRepository.UpdateAsync(session);
                 throw new BadRequestException("Phiên học đã hết hạn 30 phút.");
+            }
+
+            // BUG-05 FIX: Chặn nộp câu hỏi ngoại lai - Câu hỏi phải thuộc Node của session hiện tại
+            var isQuestionInNode = await _nodeQuestionRepository.FirstOrDefaultAsync(
+                nq => nq.NodeId == session.NodeId && nq.QuestionId == request.QuestionId);
+            if (isQuestionInNode == null)
+            {
+                throw new BadRequestException("Câu hỏi này không thuộc về bài học hiện tại.");
             }
 
             // 2. Kiểm tra Idempotency (Chống nộp 2 lần trừ 2 tim / cộng 2 lần XP)
@@ -245,6 +326,9 @@ namespace Mimo.Application.Services
             int comboBonus = 0;
 
             var user = await _userRepository.FirstOrDefaultAsync(u => u.Id == userId);
+
+            // BUG-06 FIX: Giao dịch đảm bảo tính toàn vẹn đa thực thể (Ledger, Stats, Session)
+            await using var tx = await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
             if (isCorrect)
             {
@@ -345,9 +429,17 @@ namespace Mimo.Application.Services
                 IdempotencyKey = idempotencyKey
             });
 
-            await _sessionRepository.UpdateAsync(session);
-
+            // BUG-04 FIX: Cập nhật trạng thái session sang "failed" và lưu database khi hết tim
             bool isSessionFailed = currentHearts <= 0 && !(stats?.IsPro ?? false);
+            if (isSessionFailed)
+            {
+                session.Status = "failed";
+                session.CompletedAt = DateTime.UtcNow;
+                _logger.LogWarning("User {UserId} hết tim trong session {SessionId}. Session chuyển sang trạng thái 'failed'.", userId, session.Id);
+            }
+
+            await _sessionRepository.UpdateAsync(session);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
             return new SubmitAnswerResponseDto
             {
@@ -371,13 +463,37 @@ namespace Mimo.Application.Services
                 throw new NotFoundException("Không tìm thấy phiên học.");
             }
 
+            if (string.Equals(session.Status, "failed", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BadRequestException("Phiên học đã thất bại do hết tim, không thể hoàn thành.");
+            }
+
             if (!string.Equals(session.Status, "in_progress", StringComparison.OrdinalIgnoreCase))
             {
                 throw new BadRequestException("Phiên học đã kết thúc trước đó.");
             }
 
+            if (DateTime.UtcNow > session.ExpiresAt)
+            {
+                session.Status = "failed";
+                await _sessionRepository.UpdateAsync(session);
+                throw new BadRequestException("Phiên học đã hết hạn 30 phút.");
+            }
+
+            // BUG-01 FIX: Chặn Bypass hoàn thành bài mà không trả lời câu hỏi
+            var totalNodeQuestions = await _nodeQuestionRepository.WhereAsync(nq => nq.NodeId == session.NodeId);
+            var sessionAnswers = await _sessionAnswerRepository.WhereAsync(sa => sa.SessionId == sessionId);
+
+            if (totalNodeQuestions.Count > 0 && sessionAnswers.Count < totalNodeQuestions.Count)
+            {
+                throw new BadRequestException($"Bạn chưa hoàn thành tất cả câu hỏi trong bài học ({sessionAnswers.Count}/{totalNodeQuestions.Count} câu).");
+            }
+
             var user = await _userRepository.FirstOrDefaultAsync(u => u.Id == userId);
             var stats = await _statsRepository.FirstOrDefaultAsync(s => s.UserId == userId);
+
+            // BUG-06 FIX: Giao dịch đảm bảo hoàn thành bài học
+            await using var tx = await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
             // 1. Thưởng Perfect Lesson (+5 XP nếu không mất tim nào - AGENT.md Section 5.3)
             bool isPerfectLesson = session.HeartsLost == 0;
@@ -428,7 +544,7 @@ namespace Mimo.Application.Services
                 });
             }
 
-            // 4. Tự động mở khóa node tiếp theo trong cùng Unit
+            // 4. Tự động mở khóa node tiếp theo trong cùng Unit hoặc Unit kế tiếp trong Domain
             Guid? unlockedNextNodeId = null;
             var currentNode = await _nodeRepository.FirstOrDefaultAsync(n => n.Id == session.NodeId);
             if (currentNode != null)
@@ -439,6 +555,27 @@ namespace Mimo.Application.Services
                     string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
 
                 var nextNode = nextNodes.OrderBy(n => n.Order).FirstOrDefault();
+
+                // Nếu đã là node cuối cùng của Unit hiện tại -> Tìm node đầu tiên của Unit kế tiếp trong Domain
+                if (nextNode == null)
+                {
+                    var currentUnit = await _unitRepository.FirstOrDefaultAsync(u => u.Id == currentNode.UnitId);
+                    if (currentUnit != null)
+                    {
+                        var nextUnits = await _unitRepository.WhereAsync(u =>
+                            u.DomainId == currentUnit.DomainId &&
+                            u.Order > currentUnit.Order);
+                        var nextUnit = nextUnits.OrderBy(u => u.Order).FirstOrDefault();
+                        if (nextUnit != null)
+                        {
+                            var nextUnitNodes = await _nodeRepository.WhereAsync(n =>
+                                n.UnitId == nextUnit.Id &&
+                                string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                            nextNode = nextUnitNodes.OrderBy(n => n.Order).FirstOrDefault();
+                        }
+                    }
+                }
+
                 if (nextNode != null)
                 {
                     unlockedNextNodeId = nextNode.Id;
@@ -459,6 +596,8 @@ namespace Mimo.Application.Services
                     }
                 }
             }
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
             // 5. Cập nhật chuỗi Streak theo IStreakService
             var streakResult = await _streakService.UpdateStreakAsync(userId, cancellationToken);

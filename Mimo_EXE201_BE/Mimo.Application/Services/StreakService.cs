@@ -101,30 +101,24 @@ namespace Mimo.Application.Services
 
                 if (stats.StreakFreezeCount >= deltaDays)
                 {
-                    // Tiêu thụ bùa Freeze để bảo toàn chuỗi
+                    // Tiêu thụ bùa Freeze để bảo toàn chuỗi ngày vắng mặt
                     stats.StreakFreezeCount -= deltaDays;
+                    // Chuỗi được bảo toàn và cộng thêm ngày học hôm nay (+1)
+                    stats.Streak += 1;
                     stats.LastActiveDate = currentDate;
                     freezeConsumed = true;
                     status = "Frozen";
-                    _logger.LogInformation("User {UserId} đã tiêu thụ {DeltaDays} bùa Freeze để bảo toàn Streak {Streak}",
+                    _logger.LogInformation("User {UserId} đã tiêu thụ {DeltaDays} bùa Freeze để bảo toàn và tăng Streak lên {Streak}",
                         userId, deltaDays, stats.Streak);
-                }
-                else if (deltaDays == 1 && stats.StreakFreezeCount >= 1)
-                {
-                    stats.StreakFreezeCount -= 1;
-                    stats.LastActiveDate = currentDate;
-                    freezeConsumed = true;
-                    status = "Frozen";
-                    _logger.LogInformation("User {UserId} đã tiêu thụ 1 bùa Freeze để bảo toàn Streak {Streak}",
-                        userId, stats.Streak);
                 }
                 else
                 {
-                    // Không đủ bùa -> Chuỗi bị reset về 1
+                    // Không đủ bùa bù cho tất cả ngày vắng mặt -> Chuỗi bị reset về 1
                     stats.Streak = 1;
                     stats.LastActiveDate = currentDate;
                     status = "Reset";
-                    _logger.LogInformation("User {UserId} bị đứt chuỗi Streak, reset về 1", userId);
+                    _logger.LogInformation("User {UserId} không đủ bùa Freeze (cần {DeltaDays}, có {Count}), chuỗi Streak bị reset về 1",
+                        userId, deltaDays, stats.StreakFreezeCount);
                 }
             }
 

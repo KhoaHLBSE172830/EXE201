@@ -22,6 +22,8 @@ public static class DependencyInjection
         services.AddScoped<IStreakService, StreakService>();
         services.AddScoped<IGameplayService, GameplayService>();
         services.AddScoped<IPracticeService, PracticeService>();
+        services.AddScoped<ICurriculumService, CurriculumService>();
+        services.AddScoped<ILeaderboardService, LeaderboardService>();
         return services;
     }
 }
