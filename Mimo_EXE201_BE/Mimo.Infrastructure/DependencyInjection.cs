@@ -7,6 +7,7 @@ using Mimo.Infrastructure.Core.Cache;
 using Mimo.Infrastructure.Core.Crypto;
 using Mimo.Infrastructure.Core.JWT;
 using Mimo.Infrastructure.Core.Mail;
+using Mimo.Infrastructure.Core.Storage;
 using Mimo.Infrastructure.Database;
 using Mimo.Infrastructure.Repository;
 using StackExchange.Redis;
@@ -27,6 +28,8 @@ public static class DependencyInjection
 
         // Repositories
         services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+        services.AddScoped<ILeaderboardRepository, LeaderboardRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Core Infrastructure Services
         services.AddScoped<ICryptoService, CryptoService>();
@@ -49,6 +52,10 @@ public static class DependencyInjection
         });
 
         services.AddScoped<ICacheService, CacheService>();
+
+        // Cloud Storage (Supabase)
+        services.Configure<SupabaseStorageOptions>(configuration.GetSection(SupabaseStorageOptions.SectionName));
+        services.AddHttpClient<IStorageService, SupabaseStorageService>();
 
         return services;
     }

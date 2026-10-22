@@ -234,5 +234,27 @@ namespace Mimo.Application.Services
 
             return true;
         }
+
+        public async Task<UserDetailDto> UpdateAvatarAsync(Guid userId, string avatarUrl)
+        {
+            var user = await _userRepository.FirstOrDefaultAsync(u => u.Id == userId, nameof(User.Profile));
+            if (user == null)
+            {
+                throw new NotFoundException("Không tìm thấy thông tin người dùng.");
+            }
+
+            user.Avatar = avatarUrl;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _userRepository.UpdateAsync(user);
+
+            if (user.Profile != null)
+            {
+                user.Profile.AvatarUrl = avatarUrl;
+                user.Profile.UpdatedAt = DateTime.UtcNow;
+                await _profileRepository.UpdateAsync(user.Profile);
+            }
+
+            return await GetMeAsync(userId);
+        }
     }
 }
