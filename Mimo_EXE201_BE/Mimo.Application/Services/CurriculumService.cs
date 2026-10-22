@@ -40,7 +40,7 @@ namespace Mimo.Application.Services
         public async Task<List<DomainOverviewDto>> GetDomainsAsync(CancellationToken cancellationToken = default)
         {
             var domains = await _domainRepository.WhereAsync(
-                d => string.Equals(d.Status, "Active", StringComparison.OrdinalIgnoreCase),
+                d => d.Status == "Active",
                 nameof(Domain.Units));
 
             var result = new List<DomainOverviewDto>();
@@ -48,7 +48,7 @@ namespace Mimo.Application.Services
 
             // BUG-09 FIX: Batch query toàn bộ published nodes 1 lần duy nhất, tránh N+1 database queries
             var publishedNodes = await _nodeRepository.WhereAsync(
-                n => allUnitIds.Contains(n.UnitId) && string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                n => allUnitIds.Contains(n.UnitId) && n.Status == "Published");
             var nodesCountByUnit = publishedNodes
                 .GroupBy(n => n.UnitId)
                 .ToDictionary(g => g.Key, g => g.Count());
@@ -98,7 +98,7 @@ namespace Mimo.Application.Services
             // BUG-09 FIX: Batch query toàn bộ published nodes của domain 1 lần
             var unitIds = domain.Units.Select(u => u.Id).Distinct().ToList();
             var publishedNodes = await _nodeRepository.WhereAsync(
-                n => unitIds.Contains(n.UnitId) && string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                n => unitIds.Contains(n.UnitId) && n.Status == "Published");
             var nodesByUnit = publishedNodes
                 .GroupBy(n => n.UnitId)
                 .ToDictionary(g => g.Key, g => g.OrderBy(n => n.Order).ToList());
@@ -147,7 +147,7 @@ namespace Mimo.Application.Services
             }
 
             var publishedNodes = await _nodeRepository.WhereAsync(
-                n => n.UnitId == unit.Id && string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                n => n.UnitId == unit.Id && n.Status == "Published");
 
             var orderedNodes = publishedNodes.OrderBy(n => n.Order).ToList();
             var nodeDtos = new List<NodeDto>();
@@ -223,7 +223,7 @@ namespace Mimo.Application.Services
             }
             else
             {
-                var activeDomains = await _domainRepository.WhereAsync(d => string.Equals(d.Status, "Active", StringComparison.OrdinalIgnoreCase));
+                var activeDomains = await _domainRepository.WhereAsync(d => d.Status == "Active");
                 domain = activeDomains.OrderBy(d => d.Order).FirstOrDefault();
                 if (domain == null)
                 {
@@ -238,7 +238,7 @@ namespace Mimo.Application.Services
 
             // Lấy toàn bộ Published Nodes thuộc các Units trên (AGENT.md Section 5.5)
             var publishedNodes = await _nodeRepository.WhereAsync(
-                n => unitIds.Contains(n.UnitId) && string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                n => unitIds.Contains(n.UnitId) && n.Status == "Published");
 
             // Nhóm Nodes theo UnitId và sắp xếp theo Order
             var nodesByUnit = publishedNodes
@@ -372,7 +372,7 @@ namespace Mimo.Application.Services
         public async Task<NodeDto> GetNodeDetailAsync(Guid nodeId, Guid? userId = null, CancellationToken cancellationToken = default)
         {
             var node = await _nodeRepository.FirstOrDefaultAsync(
-                n => n.Id == nodeId && string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                n => n.Id == nodeId && n.Status == "Published");
 
             if (node == null)
             {
