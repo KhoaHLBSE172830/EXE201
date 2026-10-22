@@ -7,15 +7,122 @@ import { mockLearnerData, mockLessonCutQuestions, mockClassroomsDatabase } from 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
 
 export const learnerService = {
-  async getDashboardData() {
-    if (USE_MOCK) {
-      return mockSuccess(mockLearnerData);
-    }
+  // -------------------------------------------------------------
+  // NHÁNH A: CÂY KỸ NĂNG & LỘ TRÌNH HỌC (CURRICULUM)
+  // -------------------------------------------------------------
+
+  /**
+   * Task A1: Lấy danh sách các chủ đề kỹ năng lớn (Domains)
+   * GET /api/v1/domains
+   */
+  async getDomains() {
     try {
-      return await apiClient.get(API_ENDPOINTS.LEARNER.MAP_NODES);
-    } catch {
+      const res = await apiClient.get(API_ENDPOINTS.CURRICULUM.DOMAINS);
+      return res;
+    } catch (err) {
+      console.warn('Lỗi khi tải danh sách chủ đề, dùng fallback mock:', err);
+      return mockSuccess(mockLearnerData.domains || []);
+    }
+  },
+
+  /**
+   * Task A2: Lấy bản đồ lộ trình học tập (Learning Path / Skill Tree)
+   * GET /api/v1/path?domainId=...
+   */
+  async getLearningPath(domainId = null) {
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.CURRICULUM.PATH(domainId));
+      return res;
+    } catch (err) {
+      console.warn('Lỗi khi tải lộ trình học, dùng fallback mock:', err);
       return mockSuccess(mockLearnerData);
     }
+  },
+
+  /**
+   * Task A1: Lấy chi tiết chặng kỹ năng kèm danh sách bài học
+   * GET /api/v1/units/{id}
+   */
+  async getUnitDetail(unitId) {
+    try {
+      return await apiClient.get(API_ENDPOINTS.CURRICULUM.UNIT_DETAIL(unitId));
+    } catch (err) {
+      console.warn('Lỗi khi tải chi tiết chặng, dùng fallback mock:', err);
+      return mockSuccess({});
+    }
+  },
+
+  // -------------------------------------------------------------
+  // NHÁNH C: BẢNG XẾP HẠNG TUẦN (WEEKLY LEADERBOARD)
+  // -------------------------------------------------------------
+
+  /**
+   * Task C1: Lấy Bảng xếp hạng tuần hiện tại (Top 30 + vị trí của người dùng hiện tại)
+   * GET /api/v1/leaderboard/current
+   */
+  async getWeeklyLeaderboard() {
+    try {
+      return await apiClient.get(API_ENDPOINTS.LEADERBOARD.CURRENT);
+    } catch (err) {
+      console.warn('Lỗi khi tải bảng xếp hạng, dùng fallback mock:', err);
+      return mockSuccess(mockLearnerData.leaderboard || {});
+    }
+  },
+
+  // -------------------------------------------------------------
+  // PHÂN HỆ MEDIA & SUPABASE STORAGE
+  // -------------------------------------------------------------
+
+  /**
+   * Tải lên ảnh đại diện và lưu vào Supabase Storage
+   * POST /api/v1/media/upload/avatar
+   */
+  async uploadAvatar(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return await apiClient.post(API_ENDPOINTS.MEDIA.UPLOAD_AVATAR, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  /**
+   * Tải lên hình ảnh/GIF câu hỏi tình huống (Curator/Admin)
+   * POST /api/v1/media/upload/question-image
+   */
+  async uploadQuestionImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return await apiClient.post(API_ENDPOINTS.MEDIA.UPLOAD_QUESTION_IMAGE, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  async getDashboardData() {
+    try {
+      // Ưu tiên gọi API thật
+      const [domainsRes, pathRes] = await Promise.all([
+        apiClient.get(API_ENDPOINTS.CURRICULUM.DOMAINS).catch(() => null),
+        apiClient.get(API_ENDPOINTS.CURRICULUM.PATH()).catch(() => null),
+      ]);
+
+      if (domainsRes?.data && pathRes?.data) {
+        return {
+          data: {
+            ...mockLearnerData,
+            domains: domainsRes.data,
+            learningPath: pathRes.data,
+            units: pathRes.data.units || [],
+          },
+        };
+      }
+    } catch {
+      // ignore
+    }
+    return mockSuccess(mockLearnerData);
   },
 
   async getLessonDetail(lessonId) {

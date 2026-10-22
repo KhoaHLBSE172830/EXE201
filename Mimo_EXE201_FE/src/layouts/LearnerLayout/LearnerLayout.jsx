@@ -5,25 +5,101 @@ import LearnerTopHeader from './LearnerTopHeader';
 import LearnerRightWidgets from './LearnerRightWidgets';
 import RoleSwitcher from '../../components/common/RoleSwitcher';
 import { learnerService } from '../../services/modules/learnerService';
+import { mockLearnerData } from '../../services/mocks/mockLearner';
 
 export default function LearnerLayout() {
   const location = useLocation();
-  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardData, setDashboardData] = useState(mockLearnerData);
   const [activeDomain, setActiveDomain] = useState('first_aid');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const fetchDashboardData = () => {
-    learnerService
-      .getDashboardData()
-      .then((res) => {
-        setDashboardData(res.data);
-      })
-      .catch((err) => {
-        console.error('Error fetching learner dashboard data:', err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+  // Chuẩn hóa DTO cây lộ trình từ Backend sang cấu trúc UI của LearnerMapPage
+  const mapLearningPathToUnits = (pathData) => {
+    if (!pathData?.units || !Array.isArray(pathData.units)) return [];
+    return pathData.units.map((unit) => ({
+      id: unit.id,
+      unitNumber: unit.order,
+      title: unit.title,
+      description: unit.description,
+      themeColor: unit.order === 1 ? '#22C55E' : unit.order === 2 ? '#3B82F6' : '#F59E0B',
+      lessons: (unit.nodes || []).map((node, idx) => ({
+        id: node.id,
+        title: node.title,
+        subtitle: `Bài học an toàn • +${node.xpReward || 10} XP`,
+        type: (node.type || 'lesson').toLowerCase(),
+        order: node.order,
+        rewardXp: node.xpReward || 10,
+        status:
+          node.userProgressStatus === 'current'
+            ? 'active'
+            : node.userProgressStatus === 'done'
+            ? 'completed'
+            : 'locked',
+        icon:
+          node.type === 'chest'
+            ? '🎁'
+            : node.type === 'boss'
+            ? '👑'
+            : idx % 2 === 0
+            ? '🩹'
+            : '🔥',
+        questionsCount: 3,
+        duration: '~3 phút',
+      })),
+    }));
+  };
+
+  const fetchDashboardData = async (selectedDomainId = null) => {
+    try {
+      // 1. Lấy danh sách domains từ Backend
+      const domainsRes = await learnerService.getDomains();
+      const rawDomains = domainsRes.data || [];
+      const domainList = rawDomains.length > 0 ? rawDomains : (dashboardData?.domains || []);
+
+      // 2. Xác định domain cần tải lộ trình (chỉ truyền GUID thật, nếu không có truyền null để BE lấy mặc định)
+      const isGuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+      const targetDomainId = isGuid(selectedDomainId)
+        ? selectedDomainId
+        : isGuid(activeDomain)
+        ? activeDomain
+        : isGuid(domainList[0]?.id)
+        ? domainList[0].id
+        : null;
+
+      // 3. Tải song song Learning Path và Leaderboard
+      const [pathRes, lbRes] = await Promise.all([
+        learnerService.getLearningPath(targetDomainId),
+        learnerService.getWeeklyLeaderboard(),
+      ]);
+
+      const pathData = pathRes?.data;
+      const formattedUnits = pathData ? mapLearningPathToUnits(pathData) : [];
+
+      setDashboardData((prev) => ({
+        ...prev,
+        domains: domainList,
+        learningPath: pathData,
+        units: formattedUnits.length > 0 ? formattedUnits : (prev?.units?.length > 0 ? prev.units : mockLearnerData.units),
+        leaderboard: lbRes?.data || prev?.leaderboard,
+      }));
+
+      // Cập nhật activeDomain theo ID thật của lộ trình vừa nhận được
+      if (pathData?.id) {
+        setActiveDomain(pathData.id);
+      } else if (targetDomainId && targetDomainId !== activeDomain) {
+        setActiveDomain(targetDomainId);
+      }
+    } catch (err) {
+      console.error('Error fetching learner dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectDomain = (domId) => {
+    setActiveDomain(domId);
+    setLoading(true);
+    fetchDashboardData(domId);
   };
 
   useEffect(() => {
@@ -49,7 +125,7 @@ export default function LearnerLayout() {
       {/* 1. THANH ĐIỀU HƯỚNG TRÁI CỐ ĐỊNH (LEFT SIDEBAR - 270px) */}
       <LearnerSidebar
         activeDomain={activeDomain}
-        onSelectDomain={(domId) => setActiveDomain(domId)}
+        onSelectDomain={handleSelectDomain}
         domains={dashboardData?.domains || []}
       />
 
@@ -60,7 +136,7 @@ export default function LearnerLayout() {
           stats={dashboardData?.stats}
           domains={dashboardData?.domains || []}
           activeDomain={activeDomain}
-          onSelectDomain={(domId) => setActiveDomain(domId)}
+          onSelectDomain={handleSelectDomain}
         />
 
         {/* THÂN CHÍNH: CỘT GIỮA + CỘT PHẢI WIDGETS */}

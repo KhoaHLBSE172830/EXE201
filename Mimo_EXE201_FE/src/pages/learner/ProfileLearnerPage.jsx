@@ -1,13 +1,25 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { sound, fireConfetti } from '../../utils/audioEffects';
+import { learnerService } from '../../services/modules/learnerService';
 import { businessService } from '../../services/modules/businessService';
 import { useNavigate } from 'react-router-dom';
 
 export default function ProfileLearnerPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [currentAvatar, setCurrentAvatar] = useState('🧑🏻');
+  const [currentAvatar, setCurrentAvatar] = useState(
+    user?.avatar && user.avatar.startsWith('http') ? (
+      <img
+        src={user.avatar}
+        alt="Avatar"
+        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+      />
+    ) : (
+      '🧑🏻'
+    )
+  );
+  const [isUploading, setIsUploading] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [fullName, setFullName] = useState(user?.name || 'Nguyễn Văn Học');
@@ -15,6 +27,34 @@ export default function ProfileLearnerPage() {
   const [teacherCodeInput, setTeacherCodeInput] = useState('');
   const [teacherCodeError, setTeacherCodeError] = useState('');
   const [teacherSuccessData, setTeacherSuccessData] = useState(null);
+
+  const handleUploadAvatarFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const res = await learnerService.uploadAvatar(file);
+      const avatarUrl = res.data?.url || res.data?.Url;
+      if (avatarUrl) {
+        sound.playVictory();
+        setCurrentAvatar(
+          <img
+            src={avatarUrl}
+            alt="Avatar"
+            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+          />
+        );
+        alert('🎉 Tải ảnh đại diện lên Supabase Storage thành công!');
+        setShowAvatarPicker(false);
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải ảnh avatar lên Supabase:', err);
+      alert('Không thể tải ảnh lên. Vui lòng kiểm tra dung lượng (tối đa 10MB) hoặc định dạng file!');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const avatarChoices = ['🧑🏻', '👦🏻', '👧🏻', '🤖', '🦸🏻', '👨🏻‍🚒', '👩🏻‍⚕️', '🕵🏻'];
 
@@ -229,6 +269,34 @@ export default function ProfileLearnerPage() {
               {av}
             </button>
           ))}
+
+          {/* NÚT UPLOAD ẢNH THẬT LÊN SUPABASE CLOUD STORAGE */}
+          <label
+            style={{
+              padding: '10px 16px',
+              borderRadius: '14px',
+              background: '#0EA5E9',
+              color: '#FFFFFF',
+              fontSize: '13px',
+              fontWeight: 800,
+              cursor: isUploading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 4px 12px rgba(14, 165, 233, 0.25)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>{isUploading ? '⏳ Đang tải...' : '☁️ Tải ảnh từ máy (Supabase)'}</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              style={{ display: 'none' }}
+              disabled={isUploading}
+              onChange={handleUploadAvatarFile}
+            />
+          </label>
+
           <button
             onClick={() => setShowAvatarPicker(false)}
             style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '12px', fontWeight: 700, cursor: 'pointer', marginLeft: 'auto' }}
