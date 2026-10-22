@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: mimo-be-api
+    runtime: docker
+    dockerfilePath: ./Mimo.API/Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_HTTP_PORTS
+        value: 8080
+      - key: ENABLE_SWAGGER
+        value: "true"
+      - key: APPLY_MIGRATIONS
+        value: "true"
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: ConnectionStrings__Redis
+        sync: false
+      - key: Jwt__Secret
+        generateWithLength: 64
+      - key: Supabase__Url
+        value: https://axbejjdzsuelscpkuwab.supabase.co
+      - key: Supabase__ApiKey
+        sync: false
+      - key: Supabase__BucketName
+        value: mimo-assets
