@@ -23,7 +23,10 @@ public static class DependencyInjection
         if (!string.IsNullOrEmpty(connectionString))
         {
             services.AddDbContext<MimoDbContext>(options =>
-                options.UseNpgsql(connectionString));
+            {
+                options.UseNpgsql(connectionString);
+                options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+            });
         }
 
         // Repositories

@@ -120,7 +120,7 @@ namespace Mimo.Application.Services
                     var prevNodesInUnit = await _nodeRepository.WhereAsync(n =>
                         n.UnitId == node.UnitId &&
                         n.Order < node.Order &&
-                        string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                        n.Status == "Published");
                     var prevNode = prevNodesInUnit.OrderByDescending(n => n.Order).FirstOrDefault();
 
                     if (prevNode != null)
@@ -138,7 +138,7 @@ namespace Mimo.Application.Services
                         {
                             var lastNodesOfPrevUnit = await _nodeRepository.WhereAsync(n =>
                                 n.UnitId == prevUnit.Id &&
-                                string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                                n.Status == "Published");
                             var lastNode = lastNodesOfPrevUnit.OrderByDescending(n => n.Order).FirstOrDefault();
 
                             if (lastNode != null)
@@ -552,7 +552,7 @@ namespace Mimo.Application.Services
                 var nextNodes = await _nodeRepository.WhereAsync(n =>
                     n.UnitId == currentNode.UnitId &&
                     n.Order > currentNode.Order &&
-                    string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                    n.Status == "Published");
 
                 var nextNode = nextNodes.OrderBy(n => n.Order).FirstOrDefault();
 
@@ -570,7 +570,7 @@ namespace Mimo.Application.Services
                         {
                             var nextUnitNodes = await _nodeRepository.WhereAsync(n =>
                                 n.UnitId == nextUnit.Id &&
-                                string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                                n.Status == "Published");
                             nextNode = nextUnitNodes.OrderBy(n => n.Order).FirstOrDefault();
                         }
                     }

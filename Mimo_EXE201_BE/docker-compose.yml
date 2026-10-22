@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -62,7 +60,7 @@ services:
       - ASPNETCORE_HTTP_PORTS=8080
       - APPLY_MIGRATIONS=true
       - ENABLE_SWAGGER=true
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-mimo_db};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection:-Host=postgres;Port=5432;Database=mimo_db;Username=postgres;Password=123456}
       - ConnectionStrings__Redis=redis:6379
       - Jwt__Secret=${JWT_SECRET:-0ebe2440a9eba77bed3a7a081b9bb26d792baaec3fcac1eae95b7148bfdcb8c5}
       - Supabase__Url=${SUPABASE_URL:-https://axbejjdzsuelscpkuwab.supabase.co}
