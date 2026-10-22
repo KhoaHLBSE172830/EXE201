@@ -17,11 +17,21 @@ export const RoleGuard = ({ allowedRoles = [] }) => {
 
   // 2. Đã đăng nhập nhưng không có role hoặc role không khớp -> Đá về trang 403 Forbidden
   if (allowedRoles.length > 0) {
-    const userRole = (role || '').toString().trim().toUpperCase();
+    const rawRole = (role || '').toString().trim().toUpperCase();
+    const roleMap = {
+      '1': 'ADMIN',
+      '2': 'STUDENT',
+      '3': 'CURATOR',
+      '4': 'ORGANIZATION',
+      '5': 'EDUCATOR',
+    };
+    const userRole = roleMap[rawRole] || rawRole;
     const normalizedAllowed = allowedRoles.map((r) => r.toUpperCase());
     
     // Đồng nhất STUDENT và LEARNER
-    const effectiveRoles = userRole === 'STUDENT' ? ['STUDENT', 'LEARNER'] : [userRole];
+    const effectiveRoles = (userRole === 'STUDENT' || userRole === 'LEARNER') 
+      ? ['STUDENT', 'LEARNER'] 
+      : [userRole];
     const hasPermission = effectiveRoles.some((r) => normalizedAllowed.includes(r));
 
     if (!userRole || !hasPermission) {

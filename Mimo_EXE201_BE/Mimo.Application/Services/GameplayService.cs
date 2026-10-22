@@ -436,7 +436,7 @@ namespace Mimo.Application.Services
                 var nextNodes = await _nodeRepository.WhereAsync(n =>
                     n.UnitId == currentNode.UnitId &&
                     n.Order > currentNode.Order &&
-                    string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase));
+                    n.Status == "Published");
 
                 var nextNode = nextNodes.OrderBy(n => n.Order).FirstOrDefault();
                 if (nextNode != null)

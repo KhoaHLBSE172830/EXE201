@@ -21,6 +21,19 @@ export const API_ENDPOINTS = {
     PROFILE: '/learner/profile',
   },
 
+  // Phân hệ Gameplay Engine & Chấm điểm thời gian thực (Nhánh B)
+  GAMEPLAY: {
+    START_LESSON: (nodeId) => `/lessons/${nodeId}/start`,
+    SUBMIT_ANSWER: (sessionId) => `/sessions/${sessionId}/answer`,
+    COMPLETE_SESSION: (sessionId) => `/sessions/${sessionId}/complete`,
+  },
+
+  // Phân hệ Phòng ôn tập & Hồi tim (Nhánh B)
+  PRACTICE: {
+    WRONG_QUESTIONS: '/practice/wrong-questions',
+    SUBMIT_ANSWER: '/practice/answer',
+  },
+
   // 2. Phân hệ Tác giả soạn bài (Curator Studio)
   CURATOR: {
     COURSES: '/curator/courses',

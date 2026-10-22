@@ -46,6 +46,7 @@ namespace Mimo.Infrastructure.Database
                 await SeedRolesAsync();
                 await SeedAdminUserAsync();
                 await SeedGameplayTestDataAsync();
+                await SimulationScenariosSeeder.SeedSimulationScenariosAsync(_context, _logger);
             }
             catch (Exception ex)
             {

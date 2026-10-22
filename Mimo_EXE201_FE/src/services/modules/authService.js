@@ -46,7 +46,26 @@ export const authService = {
       return mockError('Email hoặc mật khẩu không đúng! (Gợi ý tài khoản mẫu: learner@mimo.com, educator@mimo.com, curator@mimo.com, admin@mimo.com / Mật khẩu: 123)', 401);
     }
 
-    return apiClient.post(API_ENDPOINTS.AUTH.LOGIN, { email, password });
+    const res = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, { email, password });
+    if (res?.data && res.data.accessToken && !res.data.token) {
+      res.data.token = res.data.accessToken;
+    }
+
+    if (res?.data?.user) {
+      const u = res.data.user;
+      const roleMap = {
+        1: 'ADMIN',
+        2: 'STUDENT',
+        3: 'CURATOR',
+        4: 'ORGANIZATION',
+        5: 'EDUCATOR',
+      };
+      // Chuẩn hóa role sang chuỗi in hoa: ưu tiên roleName ('Admin' -> 'ADMIN') hoặc map từ enum số
+      u.role = (u.roleName ? u.roleName : (roleMap[u.role] || u.role || 'STUDENT')).toString().toUpperCase();
+      u.name = u.fullName || u.name || (u.email ? u.email.split('@')[0] : 'User');
+    }
+
+    return res;
   },
 
   /**
@@ -60,7 +79,7 @@ export const authService = {
           id: `user_custom_${Date.now()}`,
           email: formData.email.trim(),
           password: formData.password.trim(),
-          name: formData.name || formData.email.split('@')[0],
+          name: formData.fullName || formData.name || formData.email.split('@')[0],
           role: formData.role || 'LEARNER',
           avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(formData.name || 'User')}`,
         };
@@ -74,7 +93,15 @@ export const authService = {
         message: 'Đăng ký tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.',
       });
     }
-    return apiClient.post(API_ENDPOINTS.AUTH.REGISTER, formData);
+
+    const payload = {
+      fullName: (formData.fullName || formData.name || '').trim(),
+      email: (formData.email || '').trim().toLowerCase(),
+      password: formData.password || '',
+      phoneNumber: formData.phoneNumber || formData.phone || null,
+    };
+
+    return apiClient.post(API_ENDPOINTS.AUTH.REGISTER, payload);
   },
 
   /**
