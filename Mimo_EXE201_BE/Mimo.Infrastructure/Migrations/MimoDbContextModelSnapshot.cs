@@ -940,6 +940,12 @@ namespace Mimo.Infrastructure.Migrations
                     b.Property<int>("StreakFreezeCount")
                         .HasColumnType("integer");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("UserId");
 
                     b.ToTable("UserStats");
