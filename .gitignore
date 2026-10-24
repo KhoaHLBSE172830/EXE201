@@ -24,6 +24,8 @@ ehthumbs.db
 *.tmp
 *.bak
 *.swp
+backups/
+Mimo_EXE201_BE/backups/
 
 # Note: Specific ignore rules are located inside each project folder:
 # - Mimo_EXE201_BE/.gitignore (Backend: .NET / C# / Visual Studio)

@@ -14,17 +14,21 @@ export const getRedirectPathByRole = (role) => {
   const normalized = (role || '').toString().trim().toUpperCase();
 
   switch (normalized) {
+    case '1':
+    case 'ADMIN':
+      return '/admin';
+    case '2':
     case 'LEARNER':
     case 'STUDENT':
       return '/learn';
+    case '3':
     case 'CURATOR':
       return '/studio';
+    case '4':
     case 'ORGANIZATION':
-      return '/business';
+    case '5':
     case 'EDUCATOR':
       return '/business';
-    case 'ADMIN':
-      return '/admin';
     default:
       return '/learn';
   }

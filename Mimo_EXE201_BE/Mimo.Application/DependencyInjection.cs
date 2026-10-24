@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
         services.AddScoped<IAdminFeedbackService, AdminFeedbackService>();
         services.AddScoped<IAdminMonetizationService, AdminMonetizationService>();
+        services.AddScoped<IPaymentService, PaymentService>();
         return services;
     }
 }

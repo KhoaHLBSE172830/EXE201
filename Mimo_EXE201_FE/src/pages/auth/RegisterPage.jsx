@@ -45,13 +45,15 @@ export default function RegisterPage() {
         }, 1200);
       } else {
         const res = await authService.register(formData);
-        setSuccessMsg(res.data.message || 'Tạo tài khoản thành công! Đang chuyển hướng...');
+        setSuccessMsg(res?.data?.message || res?.message || 'Tạo tài khoản thành công! Đang chuyển hướng...');
         setTimeout(() => {
           navigate('/login');
         }, 1500);
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Đăng ký không thành công');
+      const serverError = err.response?.data?.error || err.response?.data?.message;
+      const detailErrors = err.response?.data?.errors ? Object.values(err.response.data.errors).flat().join(', ') : '';
+      setError(detailErrors || serverError || err.message || 'Đăng ký không thành công');
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { sound, fireConfetti } from '../../utils/audioEffects';
+import { paymentService } from '../../services/modules/paymentService';
+import apiClient from '../../services/api/apiClient';
+import { API_ENDPOINTS } from '../../services/api/endpoints';
+
+// Hàm chuẩn hóa nhận diện gói cước linh hoạt
+const resolvePlanCode = (userObj) => {
+  if (!userObj) return 'FREE';
+  if (userObj.role === 'ADMIN_SCHOOL' || userObj.role === 'ENTERPRISE') return 'B2B_SCHOOL';
+  
+  const plan = String(userObj.plan || userObj.planCode || '').toUpperCase().replace('MIMO_', '');
+  const planName = String(userObj.planName || '').toUpperCase();
+  const amount = Number(userObj.amount || userObj.vnp_Amount || 0);
+
+  // 1. Nhận diện gói 6 Tháng (Half-Year / 399.000 đ)
+  if (
+    plan === 'PREMIUM_6M' ||
+    plan.includes('6M') ||
+    planName.includes('6 THÁNG') ||
+    planName.includes('HALF-YEAR') ||
+    amount === 399000
+  ) {
+    return 'PREMIUM_6M';
+  }
+
+  // 2. Nhận diện gói 3 Tháng (Quarterly / 219.000 đ)
+  if (
+    plan === 'PREMIUM_3M' ||
+    plan.includes('3M') ||
+    planName.includes('3 THÁNG') ||
+    planName.includes('QUARTERLY') ||
+    amount === 219000
+  ) {
+    return 'PREMIUM_3M';
+  }
+
+  // 3. Nhận diện gói 1 Tháng (Monthly / 79.000 đ)
+  if (
+    plan === 'PREMIUM_1M' ||
+    plan.includes('1M') ||
+    planName.includes('1 THÁNG') ||
+    planName.includes('MONTHLY') ||
+    amount === 79000
+  ) {
+    return 'PREMIUM_1M';
+  }
+
+  // 4. Nếu user có cờ Pro nhưng chưa xác định được chuỗi mã, ưu tiên gói 6M đang dùng của user
+  if (userObj.isPro || userObj.isPlus || userObj.stats?.isPro) {
+    return 'PREMIUM_6M';
+  }
+
+  return 'FREE';
+};
 
 export default function UpgradePlanPage() {
   const navigate = useNavigate();
@@ -12,6 +65,7 @@ export default function UpgradePlanPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isVnPayLoading, setIsVnPayLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   // Form liên hệ tư vấn B2B
@@ -26,27 +80,49 @@ export default function UpgradePlanPage() {
   });
   const [consultSubmitted, setConsultSubmitted] = useState(false);
 
-  // Đọc trạng thái từ localStorage
+  // Đọc trạng thái từ localStorage và tự động đồng bộ từ Database
   useEffect(() => {
+    // 1. Đọc ngay từ localStorage để hiển thị tức thì
     try {
       const rawUser = localStorage.getItem('mimo_user');
       if (rawUser) {
         const u = JSON.parse(rawUser);
-        if (u.role === 'ADMIN_SCHOOL' || u.role === 'ENTERPRISE') {
-          setActivePlan('B2B_SCHOOL');
-        } else if (u.plan === 'PREMIUM_6M') {
-          setActivePlan('PREMIUM_6M');
-        } else if (u.plan === 'PREMIUM_3M') {
-          setActivePlan('PREMIUM_3M');
-        } else if (u.isPlus || u.plan === 'PREMIUM_1M' || u.plan === 'MIMO_PLUS') {
-          setActivePlan('PREMIUM_1M');
-        } else {
-          setActivePlan('FREE');
-        }
+        setActivePlan(resolvePlanCode(u));
       }
     } catch (e) {
       console.error(e);
     }
+
+    // 2. Tự động đồng bộ từ Backend Database Supabase (/auth/me) nếu đã đăng nhập
+    const syncFromDatabase = async () => {
+      const token = localStorage.getItem('mimo_token');
+      if (!token) return;
+      try {
+        const res = await apiClient.get(API_ENDPOINTS.AUTH.ME);
+        const me = res?.data || res;
+        if (me) {
+          const raw = localStorage.getItem('mimo_user');
+          const current = raw ? JSON.parse(raw) : {};
+          const isPro = me.stats?.isPro ?? me.isPro ?? current.isPro ?? false;
+          const cleanPlan = String(me.planCode || me.plan || current.plan || '').toUpperCase().replace('MIMO_', '');
+          const merged = {
+            ...current,
+            ...me,
+            isPro,
+            isPlus: isPro || current.isPlus,
+            plan: cleanPlan || current.plan,
+            planCode: cleanPlan || current.planCode,
+            planName: me.planName || current.planName,
+          };
+          localStorage.setItem('mimo_user', JSON.stringify(merged));
+          setActivePlan(resolvePlanCode(merged));
+        }
+      } catch (err) {
+        console.warn('Lưu ý đồng bộ tài khoản từ backend:', err?.message);
+      }
+    };
+
+    syncFromDatabase();
   }, []);
 
   // 1. CÁC GÓI CÁ NHÂN (CHUẨN 100% THEO FILE TASK_MIMO.DOCX & FIGMA 18)
@@ -259,28 +335,79 @@ export default function UpgradePlanPage() {
     setPaymentSuccess(false);
   };
 
-  const handleConfirmMockPayment = () => {
+  const handlePayWithVnPay = async () => {
+    if (!selectedPlanDetails) return;
+    setIsVnPayLoading(true);
+    sound.playClick();
+    try {
+      const planCode = selectedPlanDetails.id || selectedPlanDetails.code;
+      const res = await paymentService.createVnPayUrl(planCode);
+      const paymentUrl = res?.data?.paymentUrl || res?.paymentUrl;
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
+      } else {
+        alert('Không nhận được liên kết thanh toán từ cổng VNPay. Vui lòng thử lại!');
+      }
+    } catch (err) {
+      console.error('Lỗi khởi tạo thanh toán VNPay:', err);
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        'Không thể kết nối đến cổng thanh toán VNPay.';
+      alert(errorMsg);
+    } finally {
+      setIsVnPayLoading(false);
+    }
+  };
+
+  const handleConfirmMockPayment = async () => {
+    if (!selectedPlanDetails) return;
     setIsProcessing(true);
     sound.playClick();
-    setTimeout(() => {
-      setIsProcessing(false);
-      setPaymentSuccess(true);
-      sound.playVictory();
-      fireConfetti();
+    try {
+      const planCode = selectedPlanDetails.id || selectedPlanDetails.code;
+      let data = null;
+      try {
+        // Gọi API Backend lưu dữ liệu thật vào Database Supabase
+        const res = await paymentService.mockActivatePlan(planCode);
+        data = res?.data || res;
+      } catch (apiErr) {
+        console.warn('Backend mock-activate response info:', apiErr?.response?.data || apiErr?.message);
+      }
 
-      // Cập nhật trạng thái người dùng trong localStorage
+      // Cập nhật trạng thái người dùng trong localStorage và State
       try {
         const rawUser = localStorage.getItem('mimo_user');
         const userObj = rawUser ? JSON.parse(rawUser) : { name: 'Học viên MIMO' };
         userObj.isPlus = true;
+        userObj.isPro = true;
         userObj.plan = selectedPlanDetails.id;
+        userObj.planCode = selectedPlanDetails.id;
         userObj.planName = selectedPlanDetails.name;
+        if (data?.proExpiresAt) {
+          userObj.proExpiresAt = data.proExpiresAt;
+        }
         localStorage.setItem('mimo_user', JSON.stringify(userObj));
         setActivePlan(selectedPlanDetails.id);
-      } catch (err) {
-        console.error(err);
+      } catch (storageErr) {
+        console.error('Lỗi cập nhật localStorage:', storageErr);
       }
-    }, 1500);
+
+      setIsProcessing(false);
+      setPaymentSuccess(true);
+      sound.playVictory();
+      fireConfetti();
+    } catch (err) {
+      console.error('Lỗi khi kích hoạt giả lập gói:', err);
+      setIsProcessing(false);
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        'Không thể kích hoạt gói cước.';
+      alert(`Lỗi kích hoạt: ${errorMsg}`);
+    }
   };
 
   const handleB2BConsultSubmit = (e) => {
@@ -410,47 +537,71 @@ export default function UpgradePlanPage() {
               alignItems: 'stretch',
             }}
           >
-            {personalPlans.map((p) => (
-              <div
-                key={p.id}
-                style={{
-                  background: '#FFFFFF',
-                  borderRadius: '24px',
-                  border: p.isPopular ? '2.5px solid #0284C7' : '2px solid #E2E8F0',
-                  padding: '26px 20px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxShadow: p.isPopular
-                    ? '0 16px 36px rgba(2, 132, 199, 0.16)'
-                    : '0 4px 16px rgba(0, 0, 0, 0.04)',
-                  position: 'relative',
-                  transform: p.isPopular ? 'scale(1.02)' : 'none',
-                  zIndex: p.isPopular ? 3 : 1,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {/* HUY HIỆU */}
-                {p.badge && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '-13px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      background: p.badgeBg,
-                      color: p.badgeColor,
-                      fontSize: '11px',
-                      fontWeight: 900,
-                      padding: '4px 14px',
-                      borderRadius: '999px',
-                      whiteSpace: 'nowrap',
-                      boxShadow: p.isPopular ? '0 4px 12px rgba(2, 132, 199, 0.35)' : 'none',
-                    }}
-                  >
-                    {p.badge}
-                  </div>
-                )}
+            {personalPlans.map((p) => {
+              const displayBadge = p.isCurrent ? '👑 GÓI BẠN ĐANG SỬ DỤNG' : p.badge;
+              const displayBadgeBg = p.isCurrent
+                ? 'linear-gradient(135deg, #16A34A, #15803D)'
+                : p.badgeBg;
+              const displayBadgeColor = p.isCurrent ? '#FFFFFF' : p.badgeColor;
+
+              const cardBorder = p.isCurrent
+                ? '2.5px solid #16A34A'
+                : p.isPopular
+                ? '2.5px solid #0284C7'
+                : '2px solid #E2E8F0';
+
+              const cardShadow = p.isCurrent
+                ? '0 16px 36px rgba(22, 163, 74, 0.18)'
+                : p.isPopular
+                ? '0 16px 36px rgba(2, 132, 199, 0.16)'
+                : '0 4px 16px rgba(0, 0, 0, 0.04)';
+
+              const cardScale = p.isCurrent || p.isPopular ? 'scale(1.02)' : 'none';
+              const cardZIndex = p.isCurrent ? 4 : p.isPopular ? 3 : 1;
+
+              return (
+                <div
+                  key={p.id}
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: '24px',
+                    border: cardBorder,
+                    padding: '26px 20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    boxShadow: cardShadow,
+                    position: 'relative',
+                    transform: cardScale,
+                    zIndex: cardZIndex,
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {/* HUY HIỆU */}
+                  {displayBadge && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '-13px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: displayBadgeBg,
+                        color: displayBadgeColor,
+                        fontSize: '11px',
+                        fontWeight: 900,
+                        padding: '4px 14px',
+                        borderRadius: '999px',
+                        whiteSpace: 'nowrap',
+                        boxShadow: p.isCurrent
+                          ? '0 4px 14px rgba(22, 163, 74, 0.4)'
+                          : p.isPopular
+                          ? '0 4px 12px rgba(2, 132, 199, 0.35)'
+                          : 'none',
+                      }}
+                    >
+                      {displayBadge}
+                    </div>
+                  )}
 
                 <div>
                   <div style={{ marginBottom: '14px', marginTop: p.badge ? '4px' : '0' }}>
@@ -521,7 +672,7 @@ export default function UpgradePlanPage() {
                         border: '2px solid #86EFAC',
                       }}
                     >
-                      ✨ Đang hoạt động
+                      ✨ Đang hoạt động (Gói hiện tại)
                     </div>
                   ) : p.price === 0 ? (
                     <button
@@ -564,8 +715,9 @@ export default function UpgradePlanPage() {
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
         </>
       )}
 
@@ -895,28 +1047,64 @@ export default function UpgradePlanPage() {
                   </div>
                 </div>
 
+                {/* NÚT THANH TOÁN CHÍNH QUA CỔNG VNPAY SANDBOX */}
                 <button
-                  onClick={handleConfirmMockPayment}
-                  disabled={isProcessing}
+                  onClick={handlePayWithVnPay}
+                  disabled={isVnPayLoading || isProcessing}
                   style={{
                     width: '100%',
-                    padding: '15px',
+                    padding: '16px',
                     borderRadius: '16px',
                     border: 'none',
-                    background: isProcessing
+                    background: isVnPayLoading
                       ? '#94A3B8'
-                      : 'linear-gradient(135deg, #22C55E, #16A34A)',
+                      : 'linear-gradient(135deg, #005BAA 0%, #ED1C24 100%)',
                     color: '#FFFFFF',
                     fontWeight: 900,
-                    fontSize: '15px',
+                    fontSize: '15.5px',
+                    cursor: isVnPayLoading ? 'wait' : 'pointer',
+                    boxShadow: '0 8px 20px rgba(237, 28, 36, 0.3)',
+                    marginBottom: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {isVnPayLoading ? (
+                    '⏳ Đang kết nối Cổng VNPay...'
+                  ) : (
+                    <>
+                      <span>💳</span> Thanh Toán Qua Cổng VNPay Sandbox
+                    </>
+                  )}
+                </button>
+
+                <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '14px' }}>
+                  🛡️ Hỗ trợ thẻ ATM NCB test &amp; quét mã QR bảo mật chuẩn VNPay Sandbox
+                </div>
+
+                {/* NÚT GIẢ LẬP THANH TOÁN NỘI BỘ DỰ PHÒNG */}
+                <button
+                  onClick={handleConfirmMockPayment}
+                  disabled={isProcessing || isVnPayLoading}
+                  style={{
+                    width: '100%',
+                    padding: '11px',
+                    borderRadius: '14px',
+                    border: '1px solid #E2E8F0',
+                    background: '#F8FAFC',
+                    color: '#64748B',
+                    fontWeight: 700,
+                    fontSize: '13px',
                     cursor: isProcessing ? 'wait' : 'pointer',
-                    boxShadow: '0 6px 16px rgba(34, 197, 94, 0.3)',
                     transition: 'all 0.15s',
                   }}
                 >
                   {isProcessing
-                    ? '⏳ Đang xác thực giao dịch PayOS...'
-                    : `⚡ Giả Lập Quét Mã & Thanh Toán (${selectedPlanDetails.price.toLocaleString('vi-VN')} đ)`}
+                    ? '⏳ Đang xác thực giả lập...'
+                    : '⚡ Giả lập quét mã thanh toán nhanh (Demo nội bộ)'}
                 </button>
               </>
             ) : (

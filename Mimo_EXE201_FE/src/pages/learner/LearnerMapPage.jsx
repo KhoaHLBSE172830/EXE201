@@ -8,8 +8,11 @@ export default function LearnerMapPage() {
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [showTheoryModal, setShowTheoryModal] = useState(false);
 
-  // Lấy các chặng học tương ứng với Chủ đề đang được chọn
-  const units = (data?.unitsByDomain && data.unitsByDomain[activeDomain]) || data?.units || [];
+  // Ưu tiên units thật từ Backend API; nếu chưa có thì fallback theo unitsByDomain hoặc units tĩnh
+  const units =
+    (data?.units && data.units.length > 0)
+      ? data.units
+      : (data?.unitsByDomain && data.unitsByDomain[activeDomain]) || [];
 
   // Vị trí uốn lượn (Snake Path offsets) cho các nút: giữa, trái, giữa, phải...
   const getOffset = (index) => {
@@ -129,7 +132,18 @@ export default function LearnerMapPage() {
               position: 'relative',
             }}
           >
-            {unit.lessons.map((les, index) => {
+            {(unit.lessons || unit.nodes || []).map((rawLes, index) => {
+              const les = {
+                ...rawLes,
+                status:
+                  rawLes.status ||
+                  (rawLes.userProgressStatus === 'current'
+                    ? 'active'
+                    : rawLes.userProgressStatus === 'done'
+                    ? 'completed'
+                    : 'locked'),
+                type: (rawLes.type || 'lesson').toLowerCase(),
+              };
               const offset = getOffset(index);
               const isActive = les.status === 'active';
               const isCompleted = les.status === 'completed';

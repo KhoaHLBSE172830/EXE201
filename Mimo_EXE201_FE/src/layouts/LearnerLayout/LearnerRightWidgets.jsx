@@ -23,6 +23,29 @@ export default function LearnerRightWidgets({
   const navigate = useNavigate();
   const [claimedQuests, setClaimedQuests] = useState({});
 
+  // Chuẩn hóa nếu nhận LeaderboardResponseDto từ Backend
+  const rawTop = leaderboard?.topEntries || leaderboard?.TopEntries;
+  const lb = rawTop
+    ? {
+        leagueName: leaderboard.tier ? `GIẢI ĐẤU ${leaderboard.tier.toUpperCase()}` : 'GIẢI ĐẤU VÀNG',
+        timeLeft: leaderboard.remainingSeconds
+          ? `${Math.floor(leaderboard.remainingSeconds / 86400)} ngày ${Math.floor((leaderboard.remainingSeconds % 86400) / 3600)} giờ`
+          : '2 ngày 14 giờ',
+        nearbyUsers: rawTop.slice(0, 3).map((e) => ({
+          rank: e.rank ?? e.Rank,
+          name: e.fullName || e.FullName || 'Học viên',
+          xp: e.weeklyXp ?? e.WeeklyXp ?? 0,
+          avatar: e.avatarUrl || e.AvatarUrl ? (
+            <img src={e.avatarUrl || e.AvatarUrl} alt="" style={{ width: 18, height: 18, borderRadius: '50%' }} />
+          ) : (
+            '🧑🏻'
+          ),
+          isMe: Boolean(e.isCurrentUser ?? e.IsCurrentUser),
+        })),
+        message: 'Chăm chỉ hoàn thành bài học để bứt phá bảng xếp hạng tuần!',
+      }
+    : leaderboard;
+
   const handleClaim = (questId) => {
     sound.playVictory();
     setClaimedQuests((prev) => ({ ...prev, [questId]: true }));
@@ -120,17 +143,17 @@ export default function LearnerRightWidgets({
           <div>
             <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span>🏆</span>
-              <span>{leaderboard.leagueName}</span>
+              <span>{lb.leagueName}</span>
             </div>
             <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-              Còn {leaderboard.timeLeft}
+              Còn {lb.timeLeft}
             </div>
           </div>
         </div>
 
         {/* Danh sách 3 người */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-          {leaderboard.nearbyUsers?.map((u) => (
+          {lb.nearbyUsers?.map((u) => (
             <div
               key={u.rank}
               style={{
@@ -160,7 +183,7 @@ export default function LearnerRightWidgets({
         </div>
 
         <div style={{ fontSize: '12px', color: '#16A34A', fontWeight: 600, marginBottom: '12px' }}>
-          🎯 {leaderboard.message}
+          🎯 {lb.message}
         </div>
 
         <button

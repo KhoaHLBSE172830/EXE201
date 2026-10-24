@@ -1,0 +1,98 @@
+name: MIMO Backend CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "develop", "kiet" ]
+    paths:
+      - 'Mimo_EXE201_BE/**'
+      - '.github/workflows/backend-ci-cd.yml'
+  pull_request:
+    branches: [ "main", "develop" ]
+    paths:
+      - 'Mimo_EXE201_BE/**'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  BUILD_CONFIGURATION: 'Release'
+
+jobs:
+  build-and-test:
+    name: Build & Code Quality Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Mimo_EXE201_BE
+
+    steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet Packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('Mimo_EXE201_BE/**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore Dependencies
+      run: dotnet restore Mimo_EXE201_BE.sln
+
+    - name: Build Solution
+      run: dotnet build Mimo_EXE201_BE.sln --no-restore --configuration ${{ env.BUILD_CONFIGURATION }}
+
+  docker-validation:
+    name: Docker Build & Security Verification
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: actions/setup-buildx-action@v3
+
+    - name: Build Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./Mimo_EXE201_BE
+        file: ./Mimo_EXE201_BE/Mimo.API/Dockerfile
+        push: false
+        tags: mimo-api:latest
+        load: true
+
+    - name: Test Docker Container Startup
+      run: |
+        docker run -d --name test_mimo_api \
+          -e ASPNETCORE_ENVIRONMENT=Staging \
+          -e ENABLE_SWAGGER=true \
+          -e APPLY_MIGRATIONS=false \
+          -p 8080:8080 \
+          mimo-api:latest
+        sleep 5
+        docker logs test_mimo_api
+        docker ps | grep test_mimo_api
+        docker stop test_mimo_api
+
+  deploy-cloud:
+    name: Deploy to Cloud (Render / Staging)
+    needs: [build-and-test, docker-validation]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Trigger Cloud Deploy Webhook (Render)
+      if: env.RENDER_DEPLOY_HOOK_URL != ''
+      env:
+        RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      run: |
+        echo "Kích hoạt tự động triển khai phiên bản mới lên Render..."
+        curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        echo "Yêu cầu triển khai đã được gửi thành công!"

@@ -14,11 +14,29 @@ namespace Mimo.DomainLayer.Entities
         [ForeignKey("UserId")]
         public virtual User User { get; set; } = null!;
 
-        [Required]
-        public Guid CourseId { get; set; }
+        public Guid? CourseId { get; set; }
 
         [ForeignKey("CourseId")]
-        public virtual Course Course { get; set; } = null!;
+        public virtual Course? Course { get; set; }
+
+        [MaxLength(50)]
+        public string? PlanCode { get; set; }
+
+        [Required]
+        [MaxLength(100)]
+        public string TxnRef { get; set; } = string.Empty;
+
+        [MaxLength(255)]
+        public string? OrderInfo { get; set; }
+
+        [MaxLength(50)]
+        public string? VnpayTransactionNo { get; set; }
+
+        [MaxLength(20)]
+        public string? BankCode { get; set; }
+
+        [MaxLength(10)]
+        public string? VnpayResponseCode { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal Amount { get; set; } = 0;
@@ -29,6 +47,8 @@ namespace Mimo.DomainLayer.Entities
         public PaymentMethodEnum PaymentMethod { get; set; } = PaymentMethodEnum.VNPay;
 
         public DateTime TransactionDate { get; set; } = DateTime.UtcNow;
+
+        public DateTime? CompletedAt { get; set; }
 
         public TransactionStatusEnum Status { get; set; } = TransactionStatusEnum.Pending;
     }
