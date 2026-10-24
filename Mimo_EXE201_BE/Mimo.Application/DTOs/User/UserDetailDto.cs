@@ -37,6 +37,8 @@ namespace Mimo.Application.DTOs.User
         public int NextHeartInSeconds { get; set; }
         public bool IsPro { get; set; }
         public DateTime? ProExpiresAt { get; set; }
+        public string PlanCode { get; set; } = "FREE";
+        public string PlanName { get; set; } = "Mimo Free";
 
         // Gamification: Streak & Freeze
         public int Streak { get; set; }

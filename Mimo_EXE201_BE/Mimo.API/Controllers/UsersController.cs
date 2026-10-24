@@ -58,6 +58,20 @@ namespace Mimo.API.Controllers
         }
 
         /// <summary>
+        /// Lấy số liệu thống kê học tập thật 7 ngày qua và biểu đồ Radar độ thành thục 4 kỹ năng sống
+        /// </summary>
+        [HttpGet("me/study-stats")]
+        [Protected]
+        [ProducesResponseType(typeof(Mimo.Application.DTOs.Gamification.StudyStatsResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetStudyStats()
+        {
+            var userId = GetCurrentUserId();
+            var result = await _userService.GetStudyStatsAsync(userId);
+            return SuccessResp.Ok(result);
+        }
+
+        /// <summary>
         /// Cập nhật mục tiêu học tập (5/10/15 phút) và kết quả khảo sát nhận diện rủi ro lúc onboarding
         /// </summary>
         [HttpPatch("me/onboarding")]

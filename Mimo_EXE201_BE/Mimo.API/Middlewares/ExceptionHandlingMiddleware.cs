@@ -34,66 +34,76 @@ namespace Mimo.API.Middlewares
         {
             _logger.LogError(exception, "Unhandled Exception: {Message}", exception.Message);
 
-            context.Response.ContentType = "application/json";
+            context.Response.ContentType = "application/problem+json";
 
             int statusCode = StatusCodes.Status500InternalServerError;
-            string message = "Đã xảy ra lỗi máy chủ nội bộ. Vui lòng thử lại sau.";
+            string title = "Internal Server Error";
+            string detail = "Đã xảy ra lỗi máy chủ nội bộ. Vui lòng thử lại sau.";
+            object? errors = null;
 
             switch (exception)
             {
                 case BaseHttpException baseHttpEx:
                     statusCode = baseHttpEx.StatusCode;
-                    message = baseHttpEx.Message;
+                    detail = baseHttpEx.Message;
+                    title = statusCode switch
+                    {
+                        400 => "Bad Request",
+                        401 => "Unauthorized",
+                        403 => "Forbidden",
+                        404 => "Not Found",
+                        409 => "Conflict",
+                        _ => "Client Error"
+                    };
                     break;
 
                 case BadHttpRequestException badRequestEx:
                     statusCode = StatusCodes.Status400BadRequest;
-                    message = badRequestEx.Message;
+                    title = "Bad Request";
+                    detail = badRequestEx.Message;
                     break;
 
                 case UnauthorizedAccessException unauthorizedEx:
                     statusCode = StatusCodes.Status401Unauthorized;
-                    message = unauthorizedEx.Message;
+                    title = "Unauthorized";
+                    detail = unauthorizedEx.Message;
                     break;
 
                 case FluentValidation.ValidationException fvEx:
                     statusCode = StatusCodes.Status400BadRequest;
-                    var validationErrors = fvEx.Errors
+                    title = "Validation Failed";
+                    detail = "Dữ liệu yêu cầu không hợp lệ.";
+                    errors = fvEx.Errors
                         .GroupBy(e => e.PropertyName)
                         .ToDictionary(
                             g => g.Key,
                             g => g.Select(e => e.ErrorMessage).ToArray()
                         );
-
-                    context.Response.StatusCode = statusCode;
-                    var fvResponse = new
-                    {
-                        Error = "Dữ liệu yêu cầu không hợp lệ.",
-                        Code = statusCode,
-                        Timestamp = DateTime.UtcNow,
-                        Errors = validationErrors
-                    };
-                    var fvJsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-                    await context.Response.WriteAsync(JsonSerializer.Serialize(fvResponse, fvJsonOptions));
-                    return;
+                    break;
 
                 default:
                     // Trong production không để lộ raw stack trace
                     break;
             }
 
-
             context.Response.StatusCode = statusCode;
 
-            var response = new
+            // RFC 7807 Problem Details
+            var problemDetails = new
             {
-                Error = message,
-                Code = statusCode,
-                Timestamp = DateTime.UtcNow
+                type = $"https://httpstatuses.com/{statusCode}",
+                title = title,
+                status = statusCode,
+                detail = detail,
+                instance = context.Request.Path.Value,
+                error = detail, // Backward compatibility
+                code = statusCode,
+                timestamp = DateTime.UtcNow,
+                errors = errors
             };
 
             var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            await context.Response.WriteAsync(JsonSerializer.Serialize(response, jsonOptions));
+            await context.Response.WriteAsync(JsonSerializer.Serialize(problemDetails, jsonOptions));
         }
     }
 }

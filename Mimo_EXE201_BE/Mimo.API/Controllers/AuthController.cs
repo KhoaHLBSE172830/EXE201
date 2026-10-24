@@ -30,17 +30,48 @@ namespace Mimo.API.Controllers
         }
 
         /// <summary>
-        /// Đăng ký tài khoản mới (Hỗ trợ 4 Roles: Admin, Student, Curator, Organization)
+        /// Đăng ký tài khoản người học cá nhân (Student / B2C)
+        /// Tự động gán quyền Student, khởi tạo 5 Tim và Hồ sơ cá nhân. Trả về HTTP 201 Created.
         /// </summary>
         [HttpPost("register")]
         [Consumes("application/json")]
-        [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
             var result = await _authService.RegisterAsync(request);
-            return SuccessResp.Ok(result);
+            return SuccessResp.Created(result);
+        }
+
+        /// <summary>
+        /// Đăng ký tổ chức trường học mới (B2B)
+        /// Tạo mới bản ghi trong bảng Organizations và tạo tài khoản đại diện trường (Role = Organization). Trả về HTTP 201 Created.
+        /// </summary>
+        [HttpPost("register-organization")]
+        [Consumes("application/json")]
+        [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> RegisterOrganization([FromBody] OrganizationRegisterRequestDto request)
+        {
+            var result = await _authService.RegisterOrganizationAsync(request);
+            return SuccessResp.Created(result);
+        }
+
+        /// <summary>
+        /// Đăng ký tài khoản tác giả / chuyên gia kịch bản tình huống (Curator)
+        /// Gán quyền Curator, mở quyền truy cập Curator Studio (/studio). Trả về HTTP 201 Created.
+        /// </summary>
+        [HttpPost("register-curator")]
+        [Consumes("application/json")]
+        [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> RegisterCurator([FromBody] CuratorRegisterRequestDto request)
+        {
+            var result = await _authService.RegisterCuratorAsync(request);
+            return SuccessResp.Created(result);
         }
 
         /// <summary>
@@ -170,6 +201,16 @@ namespace Mimo.API.Controllers
         public IActionResult OrganizationOnly()
         {
             return SuccessResp.Ok(new { message = "Xin chào Tổ chức B2B! Bạn có quyền quản trị trường học và lớp học." });
+        }
+
+        /// <summary>
+        /// Endpoint kiểm tra phân quyền cho Role Educator hoặc Admin
+        /// </summary>
+        [HttpGet("educator-only")]
+        [RequireRoles(UserRoleEnum.Educator, UserRoleEnum.Admin)]
+        public IActionResult EducatorOnly()
+        {
+            return SuccessResp.Ok(new { message = "Xin chào Giáo viên / Educator! Bạn có quyền quản lý lớp học và theo dõi học sinh." });
         }
     }
 }

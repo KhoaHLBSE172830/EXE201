@@ -27,6 +27,37 @@ public class MimoDbContext : DbContext
     public DbSet<UserProfile> UserProfiles { get; set; } = null!;
     public DbSet<UserStats> UserStats { get; set; } = null!;
 
+    // Gamification & Gameplay Engine (AGENT.md Section 4.2 & 4.3)
+    public DbSet<Domain> Domains { get; set; } = null!;
+    public DbSet<Unit> Units { get; set; } = null!;
+    public DbSet<Node> Nodes { get; set; } = null!;
+    public DbSet<Question> Questions { get; set; } = null!;
+    public DbSet<NodeQuestion> NodeQuestions { get; set; } = null!;
+    public DbSet<UserNodeProgress> UserNodeProgresses { get; set; } = null!;
+    public DbSet<LessonSession> LessonSessions { get; set; } = null!;
+    public DbSet<SessionAnswer> SessionAnswers { get; set; } = null!;
+    public DbSet<WrongQuestion> WrongQuestions { get; set; } = null!;
+    public DbSet<XpEvent> XpEvents { get; set; } = null!;
+
+    // Quests, Shop, Badges, Handbook
+    public DbSet<DailyQuest> DailyQuests { get; set; } = null!;
+    public DbSet<UserQuest> UserQuests { get; set; } = null!;
+    public DbSet<ShopItem> ShopItems { get; set; } = null!;
+    public DbSet<ShopPurchase> ShopPurchases { get; set; } = null!;
+    public DbSet<Badge> Badges { get; set; } = null!;
+    public DbSet<UserBadge> UserBadges { get; set; } = null!;
+    public DbSet<HandbookArticle> HandbookArticles { get; set; } = null!;
+
+    // B2B School & Classroom & Assignments
+    public DbSet<Class> Classes { get; set; } = null!;
+    public DbSet<ClassMember> ClassMembers { get; set; } = null!;
+    public DbSet<Assignment> Assignments { get; set; } = null!;
+    public DbSet<AssignmentProgress> AssignmentProgresses { get; set; } = null!;
+    public DbSet<TeacherLicense> TeacherLicenses { get; set; } = null!;
+
+    // Curator & Admin Reviews
+    public DbSet<QuestionFeedback> QuestionFeedbacks { get; set; } = null!;
+
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -57,17 +88,19 @@ public class MimoDbContext : DbContext
             entity.Property(r => r.Status).HasConversion<string>();
         });
 
-        // Seed 4 default roles
+        // Seed default roles
         var adminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var studentRoleId = Guid.Parse("22222222-2222-2222-2222-222222222222");
         var curatorRoleId = Guid.Parse("33333333-3333-3333-3333-333333333333");
         var orgRoleId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+        var educatorRoleId = Guid.Parse("55555555-5555-5555-5555-555555555555");
 
         modelBuilder.Entity<Role>().HasData(
             new Role { Id = adminRoleId, RoleName = "Admin", Description = "Quản trị viên toàn hệ thống", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Role { Id = studentRoleId, RoleName = "Student", Description = "Học sinh / Người học kỹ năng", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Role { Id = curatorRoleId, RoleName = "Curator", Description = "Giảng viên / Biên tập kịch bản bài giảng", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Role { Id = orgRoleId, RoleName = "Organization", Description = "Đại diện tổ chức / Trường học B2B", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new Role { Id = orgRoleId, RoleName = "Organization", Description = "Đại diện tổ chức / Trường học B2B", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Role { Id = educatorRoleId, RoleName = "Educator", Description = "Giáo viên / Giảng viên thuộc trường học / tổ chức", Status = RoleStatusEnum.Active, CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
 
         // 2. Organizations
@@ -109,6 +142,15 @@ public class MimoDbContext : DbContext
                   .WithOne(s => s.User)
                   .HasForeignKey<UserStats>(s => s.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 3b. UserStats (Optimistic Concurrency Token via PostgreSQL system xmin)
+        modelBuilder.Entity<UserStats>(entity =>
+        {
+            entity.Property<uint>("xmin")
+                  .HasColumnType("xid")
+                  .ValueGeneratedOnAddOrUpdate()
+                  .IsConcurrencyToken();
         });
 
         // 4. Courses
@@ -220,7 +262,217 @@ public class MimoDbContext : DbContext
             entity.HasOne(t => t.Course)
                   .WithMany(c => c.Transactions)
                   .HasForeignKey(t => t.CourseId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(t => t.TxnRef);
+        });
+
+        // 12. Domains
+        modelBuilder.Entity<Domain>(entity =>
+        {
+            entity.HasIndex(d => d.Slug).IsUnique();
+        });
+
+        // 13. Units
+        modelBuilder.Entity<Unit>(entity =>
+        {
+            entity.HasOne(u => u.Domain)
+                  .WithMany(d => d.Units)
+                  .HasForeignKey(u => u.DomainId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 14. Nodes
+        modelBuilder.Entity<Node>(entity =>
+        {
+            entity.HasOne(n => n.Unit)
+                  .WithMany(u => u.Nodes)
+                  .HasForeignKey(n => n.UnitId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(n => n.Curator)
+                  .WithMany()
+                  .HasForeignKey(n => n.CuratorId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // 15. Questions
+        modelBuilder.Entity<Question>(entity =>
+        {
+            entity.HasOne(q => q.Curator)
+                  .WithMany()
+                  .HasForeignKey(q => q.CuratorId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // 16. NodeQuestions (Composite Key)
+        modelBuilder.Entity<NodeQuestion>(entity =>
+        {
+            entity.HasKey(nq => new { nq.NodeId, nq.QuestionId });
+
+            entity.HasOne(nq => nq.Node)
+                  .WithMany(n => n.NodeQuestions)
+                  .HasForeignKey(nq => nq.NodeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(nq => nq.Question)
+                  .WithMany(q => q.NodeQuestions)
+                  .HasForeignKey(nq => nq.QuestionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 17. UserNodeProgresses
+        modelBuilder.Entity<UserNodeProgress>(entity =>
+        {
+            entity.HasIndex(unp => new { unp.UserId, unp.NodeId }).IsUnique();
+
+            entity.HasOne(unp => unp.User)
+                  .WithMany(u => u.UserNodeProgresses)
+                  .HasForeignKey(unp => unp.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(unp => unp.Node)
+                  .WithMany(n => n.UserNodeProgresses)
+                  .HasForeignKey(unp => unp.NodeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 18. LessonSessions
+        modelBuilder.Entity<LessonSession>(entity =>
+        {
+            entity.HasOne(ls => ls.User)
+                  .WithMany(u => u.LessonSessions)
+                  .HasForeignKey(ls => ls.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ls => ls.Node)
+                  .WithMany(n => n.LessonSessions)
+                  .HasForeignKey(ls => ls.NodeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ls => ls.Assignment)
+                  .WithMany(a => a.LessonSessions)
+                  .HasForeignKey(ls => ls.AssignmentId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(ls => ls.AssignmentId);
+        });
+
+        // 19. SessionAnswers
+        modelBuilder.Entity<SessionAnswer>(entity =>
+        {
+            entity.HasIndex(sa => new { sa.SessionId, sa.QuestionId }).IsUnique();
+
+            entity.HasOne(sa => sa.Session)
+                  .WithMany(s => s.Answers)
+                  .HasForeignKey(sa => sa.SessionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(sa => sa.Question)
+                  .WithMany(q => q.SessionAnswers)
+                  .HasForeignKey(sa => sa.QuestionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 20. WrongQuestions
+        modelBuilder.Entity<WrongQuestion>(entity =>
+        {
+            entity.HasIndex(wq => new { wq.UserId, wq.QuestionId }).IsUnique();
+
+            entity.HasOne(wq => wq.User)
+                  .WithMany(u => u.WrongQuestions)
+                  .HasForeignKey(wq => wq.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(wq => wq.Question)
+                  .WithMany(q => q.WrongQuestions)
+                  .HasForeignKey(wq => wq.QuestionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 21. XpEvents (Ledger)
+        modelBuilder.Entity<XpEvent>(entity =>
+        {
+            entity.HasIndex(xe => xe.UserId);
+            entity.HasIndex(xe => xe.CreatedAt);
+
+            entity.HasOne(xe => xe.User)
+                  .WithMany(u => u.XpEvents)
+                  .HasForeignKey(xe => xe.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 22. DailyQuests & UserQuests
+        modelBuilder.Entity<DailyQuest>(entity =>
+        {
+            entity.HasIndex(dq => dq.QuestType);
+        });
+
+        modelBuilder.Entity<UserQuest>(entity =>
+        {
+            entity.HasIndex(uq => new { uq.UserId, uq.QuestId, uq.DateKey }).IsUnique();
+
+            entity.HasOne(uq => uq.User)
+                  .WithMany(u => u.UserQuests)
+                  .HasForeignKey(uq => uq.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(uq => uq.Quest)
+                  .WithMany()
+                  .HasForeignKey(uq => uq.QuestId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 23. ShopItems & ShopPurchases
+        modelBuilder.Entity<ShopItem>(entity =>
+        {
+            entity.HasKey(si => si.Id);
+        });
+
+        modelBuilder.Entity<ShopPurchase>(entity =>
+        {
+            entity.HasIndex(sp => sp.UserId);
+
+            entity.HasOne(sp => sp.User)
+                  .WithMany(u => u.ShopPurchases)
+                  .HasForeignKey(sp => sp.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(sp => sp.ShopItem)
+                  .WithMany()
+                  .HasForeignKey(sp => sp.ItemId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 24. Badges & UserBadges
+        modelBuilder.Entity<Badge>(entity =>
+        {
+            entity.HasKey(b => b.Id);
+            entity.HasIndex(b => b.Category);
+        });
+
+        modelBuilder.Entity<UserBadge>(entity =>
+        {
+            entity.HasIndex(ub => new { ub.UserId, ub.BadgeId }).IsUnique();
+
+            entity.HasOne(ub => ub.User)
+                  .WithMany(u => u.UserBadges)
+                  .HasForeignKey(ub => ub.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ub => ub.Badge)
+                  .WithMany()
+                  .HasForeignKey(ub => ub.BadgeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 25. HandbookArticles
+        modelBuilder.Entity<HandbookArticle>(entity =>
+        {
+            entity.HasKey(ha => ha.Id);
+            entity.HasIndex(ha => ha.Pillar);
+            entity.HasIndex(ha => ha.Order);
         });
     }
 }

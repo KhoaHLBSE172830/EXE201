@@ -22,6 +22,145 @@ namespace Mimo.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Assignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Deadline")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("NodeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PassScoreThreshold")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RewardXp")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("NodeId");
+
+                    b.HasIndex("ClassId", "Deadline");
+
+                    b.ToTable("Assignments", (string)null);
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.AssignmentProgress", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BestScore")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsPassed")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("AssignmentId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("AssignmentProgress", (string)null);
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Badge", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CriteriaType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("CriteriaValue")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Rarity")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.ToTable("Badges");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Certificate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -51,6 +190,102 @@ namespace Mimo.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Certificates");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Class", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ClassCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EducatorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FocusTopic")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Grade")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("MaxStudents")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Room")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassCode")
+                        .IsUnique();
+
+                    b.HasIndex("EducatorId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("Classes", (string)null);
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.ClassMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("ClassId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("ClassMembers", (string)null);
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Course", b =>
@@ -96,6 +331,95 @@ namespace Mimo.Infrastructure.Migrations
                     b.ToTable("Courses");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.DailyQuest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("QuestType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("RewardAmount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RewardType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("Target")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestType");
+
+                    b.ToTable("DailyQuests");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Domain", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IconUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("Domains");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Enrollment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -132,6 +456,62 @@ namespace Mimo.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Enrollments");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.HandbookArticle", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Badge")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ContentMarkdown")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EmergencyDials")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("KeyProtocol")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("LegalBasis")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Pillar")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ReadTime")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Order");
+
+                    b.HasIndex("Pillar");
+
+                    b.ToTable("HandbookArticles");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Lesson", b =>
@@ -206,6 +586,64 @@ namespace Mimo.Infrastructure.Migrations
                     b.ToTable("LessonProgresses");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.LessonSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CurrentComboStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("HeartsLost")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxComboStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("NodeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("TotalXpEarned")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignmentId");
+
+                    b.HasIndex("NodeId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("LessonSessions");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Module", b =>
                 {
                     b.Property<Guid>("Id")
@@ -234,6 +672,75 @@ namespace Mimo.Infrastructure.Migrations
                     b.HasIndex("CourseId");
 
                     b.ToTable("Modules");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Node", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CuratorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UnlockRule")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("XpReward")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CuratorId");
+
+                    b.HasIndex("UnitId");
+
+                    b.ToTable("Nodes");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.NodeQuestion", b =>
+                {
+                    b.Property<Guid>("NodeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.HasKey("NodeId", "QuestionId");
+
+                    b.HasIndex("QuestionId");
+
+                    b.ToTable("NodeQuestions");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Organization", b =>
@@ -285,12 +792,128 @@ namespace Mimo.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("UsedSeats")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
                         .IsUnique();
 
                     b.ToTable("Organizations");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Question", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CorrectData")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CuratorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Difficulty")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CuratorId");
+
+                    b.ToTable("Questions");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.QuestionFeedback", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReviewerName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("ReviewerId");
+
+                    b.ToTable("QuestionFeedbacks", (string)null);
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Review", b =>
@@ -395,7 +1018,183 @@ namespace Mimo.Infrastructure.Migrations
                             RoleName = "Organization",
                             Status = "Active",
                             UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = new Guid("55555555-5555-5555-5555-555555555555"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Giáo viên / Giảng viên thuộc trường học / tổ chức",
+                            RoleName = "Educator",
+                            Status = "Active",
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.SessionAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SubmittedAnswer")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("TimeSpentSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("XpEarned")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("SessionId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("SessionAnswers");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.ShopItem", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("BgColor")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int>("CostXp")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ShopItems");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.ShopPurchase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CostXp")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ItemId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("PurchasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ShopPurchases");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.TeacherLicense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActivationCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("AssignedClassesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid?>("ClaimedByEducatorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsClaimed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivationCode")
+                        .IsUnique();
+
+                    b.HasIndex("ClaimedByEducatorId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("TeacherLicenses", (string)null);
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Transaction", b =>
@@ -407,7 +1206,14 @@ namespace Mimo.Infrastructure.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<Guid>("CourseId")
+                    b.Property<string>("BankCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CourseId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("CreatedAt")
@@ -418,9 +1224,17 @@ namespace Mimo.Infrastructure.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<string>("OrderInfo")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("PlanCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -429,19 +1243,67 @@ namespace Mimo.Infrastructure.Migrations
                     b.Property<DateTime>("TransactionDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("TxnRef")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("VnpayResponseCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("VnpayTransactionNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CourseId");
 
+                    b.HasIndex("TxnRef");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Transactions");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Unit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DomainId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DomainId");
+
+                    b.ToTable("Units");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.User", b =>
@@ -535,6 +1397,69 @@ namespace Mimo.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserBadge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BadgeId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("UnlockedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BadgeId");
+
+                    b.HasIndex("UserId", "BadgeId")
+                        .IsUnique();
+
+                    b.ToTable("UserBadges");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserNodeProgress", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("NodeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NodeId");
+
+                    b.HasIndex("UserId", "NodeId")
+                        .IsUnique();
+
+                    b.ToTable("UserNodeProgresses");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.UserProfile", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -566,6 +1491,49 @@ namespace Mimo.Infrastructure.Migrations
                     b.ToTable("UserProfiles");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserQuest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClaimedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CurrentProgress")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("DateKey")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsClaimed")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("QuestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestId");
+
+                    b.HasIndex("UserId", "QuestId", "DateKey")
+                        .IsUnique();
+
+                    b.ToTable("UserQuests");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.UserStats", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -592,9 +1560,139 @@ namespace Mimo.Infrastructure.Migrations
                     b.Property<int>("StreakFreezeCount")
                         .HasColumnType("integer");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("UserId");
 
                     b.ToTable("UserStats");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.WrongQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TimesWrong")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("UserId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("WrongQuestions");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.XpEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Amount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("XpEvents");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Assignment", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Class", "Class")
+                        .WithMany("Assignments")
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "Creator")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.Node", "Node")
+                        .WithMany("Assignments")
+                        .HasForeignKey("NodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Class");
+
+                    b.Navigation("Creator");
+
+                    b.Navigation("Node");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.AssignmentProgress", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Assignment", "Assignment")
+                        .WithMany("AssignmentProgresses")
+                        .HasForeignKey("AssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.LessonSession", "Session")
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "Student")
+                        .WithMany("AssignmentProgresses")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Assignment");
+
+                    b.Navigation("Session");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Certificate", b =>
@@ -606,6 +1704,43 @@ namespace Mimo.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Enrollment");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Class", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "Educator")
+                        .WithMany("EducatorClasses")
+                        .HasForeignKey("EducatorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Mimo.DomainLayer.Entities.Organization", "Organization")
+                        .WithMany("Classes")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Educator");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.ClassMember", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Class", "Class")
+                        .WithMany("ClassMembers")
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "Student")
+                        .WithMany("ClassMembers")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Course", b =>
@@ -668,6 +1803,32 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Lesson");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.LessonSession", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Assignment", "Assignment")
+                        .WithMany("LessonSessions")
+                        .HasForeignKey("AssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Mimo.DomainLayer.Entities.Node", "Node")
+                        .WithMany("LessonSessions")
+                        .HasForeignKey("NodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("LessonSessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Assignment");
+
+                    b.Navigation("Node");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Module", b =>
                 {
                     b.HasOne("Mimo.DomainLayer.Entities.Course", "Course")
@@ -677,6 +1838,71 @@ namespace Mimo.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Node", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "Curator")
+                        .WithMany()
+                        .HasForeignKey("CuratorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Mimo.DomainLayer.Entities.Unit", "Unit")
+                        .WithMany("Nodes")
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Curator");
+
+                    b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.NodeQuestion", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Node", "Node")
+                        .WithMany("NodeQuestions")
+                        .HasForeignKey("NodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.Question", "Question")
+                        .WithMany("NodeQuestions")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Node");
+
+                    b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Question", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "Curator")
+                        .WithMany()
+                        .HasForeignKey("CuratorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Curator");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.QuestionFeedback", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Question", "Question")
+                        .WithMany("QuestionFeedbacks")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "Reviewer")
+                        .WithMany()
+                        .HasForeignKey("ReviewerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Question");
+
+                    b.Navigation("Reviewer");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Review", b =>
@@ -698,13 +1924,68 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.SessionAnswer", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Question", "Question")
+                        .WithMany("SessionAnswers")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.LessonSession", "Session")
+                        .WithMany("Answers")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.ShopPurchase", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.ShopItem", "ShopItem")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("ShopPurchases")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ShopItem");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.TeacherLicense", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "ClaimedByEducator")
+                        .WithMany("ClaimedTeacherLicenses")
+                        .HasForeignKey("ClaimedByEducatorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Mimo.DomainLayer.Entities.Organization", "Organization")
+                        .WithMany("TeacherLicenses")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ClaimedByEducator");
+
+                    b.Navigation("Organization");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Transaction", b =>
                 {
                     b.HasOne("Mimo.DomainLayer.Entities.Course", "Course")
                         .WithMany("Transactions")
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Mimo.DomainLayer.Entities.User", "User")
                         .WithMany("Transactions")
@@ -715,6 +1996,17 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Course");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Unit", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Domain", "Domain")
+                        .WithMany("Units")
+                        .HasForeignKey("DomainId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Domain");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.User", b =>
@@ -735,6 +2027,44 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserBadge", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Badge", "Badge")
+                        .WithMany()
+                        .HasForeignKey("BadgeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("UserBadges")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Badge");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserNodeProgress", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Node", "Node")
+                        .WithMany("UserNodeProgresses")
+                        .HasForeignKey("NodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("UserNodeProgresses")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Node");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.UserProfile", b =>
                 {
                     b.HasOne("Mimo.DomainLayer.Entities.User", "User")
@@ -742,6 +2072,25 @@ namespace Mimo.Infrastructure.Migrations
                         .HasForeignKey("Mimo.DomainLayer.Entities.UserProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.UserQuest", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.DailyQuest", "Quest")
+                        .WithMany()
+                        .HasForeignKey("QuestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("UserQuests")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Quest");
 
                     b.Navigation("User");
                 });
@@ -757,6 +2106,50 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.WrongQuestion", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.Question", "Question")
+                        .WithMany("WrongQuestions")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("WrongQuestions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.XpEvent", b =>
+                {
+                    b.HasOne("Mimo.DomainLayer.Entities.User", "User")
+                        .WithMany("XpEvents")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Assignment", b =>
+                {
+                    b.Navigation("AssignmentProgresses");
+
+                    b.Navigation("LessonSessions");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Class", b =>
+                {
+                    b.Navigation("Assignments");
+
+                    b.Navigation("ClassMembers");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Course", b =>
                 {
                     b.Navigation("Enrollments");
@@ -766,6 +2159,11 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Reviews");
 
                     b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Domain", b =>
+                {
+                    b.Navigation("Units");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Enrollment", b =>
@@ -780,14 +2178,45 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("LessonProgresses");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.LessonSession", b =>
+                {
+                    b.Navigation("Answers");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Module", b =>
                 {
                     b.Navigation("Lessons");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Node", b =>
+                {
+                    b.Navigation("Assignments");
+
+                    b.Navigation("LessonSessions");
+
+                    b.Navigation("NodeQuestions");
+
+                    b.Navigation("UserNodeProgresses");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Organization", b =>
                 {
+                    b.Navigation("Classes");
+
+                    b.Navigation("TeacherLicenses");
+
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Question", b =>
+                {
+                    b.Navigation("NodeQuestions");
+
+                    b.Navigation("QuestionFeedbacks");
+
+                    b.Navigation("SessionAnswers");
+
+                    b.Navigation("WrongQuestions");
                 });
 
             modelBuilder.Entity("Mimo.DomainLayer.Entities.Role", b =>
@@ -795,19 +2224,46 @@ namespace Mimo.Infrastructure.Migrations
                     b.Navigation("Users");
                 });
 
+            modelBuilder.Entity("Mimo.DomainLayer.Entities.Unit", b =>
+                {
+                    b.Navigation("Nodes");
+                });
+
             modelBuilder.Entity("Mimo.DomainLayer.Entities.User", b =>
                 {
+                    b.Navigation("AssignmentProgresses");
+
+                    b.Navigation("ClaimedTeacherLicenses");
+
+                    b.Navigation("ClassMembers");
+
+                    b.Navigation("EducatorClasses");
+
                     b.Navigation("Enrollments");
 
                     b.Navigation("InstructedCourses");
+
+                    b.Navigation("LessonSessions");
 
                     b.Navigation("Profile");
 
                     b.Navigation("Reviews");
 
+                    b.Navigation("ShopPurchases");
+
                     b.Navigation("Stats");
 
                     b.Navigation("Transactions");
+
+                    b.Navigation("UserBadges");
+
+                    b.Navigation("UserNodeProgresses");
+
+                    b.Navigation("UserQuests");
+
+                    b.Navigation("WrongQuestions");
+
+                    b.Navigation("XpEvents");
                 });
 #pragma warning restore 612, 618
         }
