@@ -24,6 +24,13 @@ public static class DependencyInjection
         services.AddScoped<IPracticeService, PracticeService>();
         services.AddScoped<ICurriculumService, CurriculumService>();
         services.AddScoped<ILeaderboardService, LeaderboardService>();
+        services.AddScoped<IAdminContentService, AdminContentService>();
+        services.AddScoped<IAdminUserService, AdminUserService>();
+        services.AddScoped<IAdminSchoolService, AdminSchoolService>();
+        services.AddScoped<IAdminGamificationService, AdminGamificationService>();
+        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        services.AddScoped<IAdminFeedbackService, AdminFeedbackService>();
+        services.AddScoped<IAdminMonetizationService, AdminMonetizationService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IQuestService, QuestService>();
         services.AddScoped<IShopService, ShopService>();
@@ -32,7 +39,6 @@ public static class DependencyInjection
         services.AddScoped<IClassMembershipService, ClassMembershipService>();
         services.AddScoped<IBusinessService, BusinessService>();
         services.AddScoped<ICuratorContentService, CuratorContentService>();
-        services.AddScoped<IAdminContentService, AdminContentService>();
         return services;
     }
 }
