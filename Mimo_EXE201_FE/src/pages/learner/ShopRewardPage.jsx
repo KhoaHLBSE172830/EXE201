@@ -1,60 +1,186 @@
-import React, { useState } from 'react';
-import { sound } from '../../utils/audioEffects';
+import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { learnerService } from '../../services/modules/learnerService';
+import { sound, fireConfetti } from '../../utils/audioEffects';
 import MimoPlusUpgradeModal from '../../components/modals/MimoPlusUpgradeModal';
 
 export default function ShopRewardPage() {
+  const { refreshData } = useOutletContext() || {};
   const [showPlusModal, setShowPlusModal] = useState(false);
-  const shopItems = [
-    {
-      id: 'freeze',
-      title: 'Bùa Đóng Băng Streak',
-      desc: 'Bảo vệ chuỗi học tập nếu bạn bận rộn không thể học 1 ngày.',
-      cost: '200 XP',
-      icon: '🛡️',
-      color: '#0EA5E9',
-      bg: '#E0F2FE',
-    },
-    {
-      id: 'hearts',
-      title: 'Gói Hồi Đầy 5 Tim',
-      desc: 'Hồi phục ngay toàn bộ 5 tim để tiếp tục thử thách an toàn.',
-      cost: '150 XP',
-      icon: '❤️',
-      color: '#EF4444',
-      bg: '#FEE2E2',
-    },
-    {
-      id: 'pro_trial',
-      title: 'Dùng Thử MIMO PRO',
-      desc: 'Mở khóa vô hạn tim, luyện tập không giới hạn trong 7 ngày.',
-      cost: 'Miễn phí',
-      icon: '👑',
-      color: '#8B5CF6',
-      bg: '#F3E8FF',
-    },
-    {
-      id: 'badge_hero',
-      title: 'Huy hiệu Hiệp sĩ An toàn',
-      desc: 'Gắn huy hiệu độc quyền trên bảng xếp hạng và hồ sơ.',
-      cost: '500 XP',
-      icon: '🎖️',
-      color: '#F59E0B',
-      bg: '#FEF3C7',
-    },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [shopData, setShopData] = useState({
+    totalXp: 0,
+    hearts: 5,
+    streakFreezeCount: 0,
+    isPro: false,
+    items: [],
+  });
+  const [purchasingId, setPurchasingId] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const fetchShop = async () => {
+    try {
+      setLoading(true);
+      const res = await learnerService.getShopItems();
+      const data = res?.data || res;
+      setShopData({
+        totalXp: data?.totalXp ?? 0,
+        hearts: data?.hearts ?? 5,
+        streakFreezeCount: data?.streakFreezeCount ?? 0,
+        isPro: data?.isPro ?? false,
+        items: data?.items || [],
+      });
+    } catch (err) {
+      console.error('Lỗi khi tải cửa hàng:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchShop();
+  }, []);
+
+  const handlePurchase = async (item) => {
+    if (item.id === 'pro_trial_7d') {
+      setShowPlusModal(true);
+      return;
+    }
+
+    if (shopData.totalXp < item.costXp) {
+      alert(`Bạn cần thêm ${item.costXp - shopData.totalXp} XP nữa để đổi vật phẩm này.`);
+      return;
+    }
+
+    try {
+      setPurchasingId(item.id);
+      const res = await learnerService.purchaseShopItem(item.id);
+      const result = res?.data || res;
+
+      sound.playVictory();
+      fireConfetti();
+
+      // Cập nhật lại số dư local
+      setShopData((prev) => ({
+        ...prev,
+        totalXp: result?.newTotalXp ?? (prev.totalXp - item.costXp),
+        hearts: result?.hearts ?? prev.hearts,
+        streakFreezeCount: result?.streakFreezeCount ?? prev.streakFreezeCount,
+        isPro: result?.isPro ?? prev.isPro,
+      }));
+
+      setToastMessage(result?.message || `Đã đổi thành công ${item.title}!`);
+      setTimeout(() => setToastMessage(null), 4000);
+
+      if (refreshData) {
+        refreshData();
+      }
+    } catch (err) {
+      console.error('Lỗi khi đổi vật phẩm:', err);
+      alert(err.response?.data?.message || err.message || 'Không thể đổi vật phẩm lúc này.');
+    } finally {
+      setPurchasingId(null);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '32px' }}>💎</span>
-          <h1 style={{ fontSize: '26px', fontWeight: 900, color: '#0F172A', margin: 0 }}>
-            Cửa hàng Đổi thưởng & Vật phẩm
-          </h1>
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            background: '#10B981',
+            color: '#FFFFFF',
+            padding: '14px 24px',
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(16, 185, 129, 0.3)',
+            zIndex: 9999,
+            fontWeight: 800,
+            fontSize: '15px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            animation: 'fadeIn 0.3s ease-out',
+          }}
+        >
+          <span>🎉</span>
+          <span>{toastMessage}</span>
         </div>
-        <p style={{ color: '#64748B', fontSize: '14.5px', margin: '6px 0 0 0' }}>
-          Sử dụng điểm kinh nghiệm (XP) tích lũy để trang bị bùa hộ mệnh và hỗ trợ việc học tập.
-        </p>
+      )}
+
+      {/* Header & Số dư ví XP */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '32px' }}>💎</span>
+            <h1 style={{ fontSize: '26px', fontWeight: 900, color: '#0F172A', margin: 0 }}>
+              Cửa hàng Đổi thưởng & Vật phẩm
+            </h1>
+          </div>
+          <p style={{ color: '#64748B', fontSize: '14.5px', margin: '6px 0 0 0' }}>
+            Sử dụng điểm kinh nghiệm (XP) tích lũy để trang bị bùa hộ mệnh và hỗ trợ sinh tồn thực tế.
+          </p>
+        </div>
+
+        {/* User Balance Chips */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div
+            style={{
+              background: '#FFFBEB',
+              border: '1.5px solid #FCD34D',
+              padding: '8px 16px',
+              borderRadius: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 800,
+              fontSize: '14px',
+              color: '#B45309',
+            }}
+          >
+            <span>⚡</span>
+            <span>{shopData.totalXp} XP</span>
+          </div>
+
+          <div
+            style={{
+              background: '#FFE4E6',
+              border: '1.5px solid #FDA4AF',
+              padding: '8px 16px',
+              borderRadius: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 800,
+              fontSize: '14px',
+              color: '#BE123C',
+            }}
+          >
+            <span>❤️</span>
+            <span>{shopData.isPro ? 'Vô hạn' : `${shopData.hearts}/5`}</span>
+          </div>
+
+          <div
+            style={{
+              background: '#E0F2FE',
+              border: '1.5px solid #7DD3FC',
+              padding: '8px 16px',
+              borderRadius: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 800,
+              fontSize: '14px',
+              color: '#0369A1',
+            }}
+          >
+            <span>🛡️</span>
+            <span>{shopData.streakFreezeCount}/2 Bùa</span>
+          </div>
+        </div>
       </div>
 
       {/* BANNER MIMO PLUS CÁ NHÂN */}
@@ -101,91 +227,99 @@ export default function ShopRewardPage() {
             fontSize: '14.5px',
             fontWeight: 900,
             cursor: 'pointer',
-            boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
+            boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            transition: 'transform 0.15s ease',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
         >
           <span>✨</span>
-          <span>DÙNG THỬ 14 NGÀY MIỄN PHÍ</span>
+          <span>NÂNG CẤP NGAY</span>
         </button>
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '18px',
-        }}
-      >
-        {shopItems.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              background: '#FFFFFF',
-              border: '2px solid #E2E8F0',
-              borderRadius: '20px',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              gap: '16px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+      {/* DANH SÁCH VẬT PHẨM QUY ĐỔI */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: '#94A3B8', fontWeight: 700 }}>
+          <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔄</div>
+          Đang tải danh mục vật phẩm từ hệ thống...
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '18px',
+          }}
+        >
+          {shopData.items.map((item) => {
+            const canAfford = shopData.totalXp >= item.costXp;
+            return (
               <div
+                key={item.id}
                 style={{
-                  width: '52px',
-                  height: '52px',
-                  borderRadius: '16px',
-                  background: item.bg,
+                  background: '#FFFFFF',
+                  border: '2px solid #E2E8F0',
+                  borderRadius: '20px',
+                  padding: '24px',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '28px',
-                  flexShrink: 0,
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '16px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                  transition: 'transform 0.2s ease',
                 }}
               >
-                {item.icon}
-              </div>
-              <div>
-                <h3 style={{ fontSize: '16.5px', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0' }}>
-                  {item.title}
-                </h3>
-                <p style={{ fontSize: '13px', color: '#64748B', margin: 0, lineHeight: 1.45 }}>
-                  {item.desc}
-                </p>
-              </div>
-            </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                  <div
+                    style={{
+                      width: '52px',
+                      height: '52px',
+                      borderRadius: '16px',
+                      background: item.bgColor || '#F1F5F9',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '28px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {item.icon || '🛍️'}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '16.5px', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0' }}>
+                      {item.title}
+                    </h3>
+                    <p style={{ fontSize: '13px', color: '#64748B', margin: 0, lineHeight: 1.45 }}>
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #F1F5F9' }}>
-              <span style={{ fontSize: '14px', fontWeight: 900, color: item.color }}>
-                {item.cost}
-              </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #F1F5F9' }}>
+                  <span style={{ fontSize: '15px', fontWeight: 900, color: item.color || '#0284C7' }}>
+                    {item.costXp > 0 ? `${item.costXp} XP` : 'Miễn phí'}
+                  </span>
 
-              <button
-                onClick={() => {
-                  sound.playClick();
-                  if (item.id === 'pro_trial') {
-                    setShowPlusModal(true);
-                  } else {
-                    alert(`Bạn đã chọn đổi: ${item.title}!`);
-                  }
-                }}
-                className="btn-3d btn-3d-blue btn-3d-sm"
-                style={{ padding: '8px 16px', fontSize: '12.5px' }}
-              >
-                {item.id === 'pro_trial' ? 'NÂNG CẤP' : 'ĐỔI NGAY'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+                  <button
+                    onClick={() => handlePurchase(item)}
+                    disabled={purchasingId === item.id || (!canAfford && item.costXp > 0)}
+                    className="btn-3d btn-3d-blue btn-3d-sm"
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '12.5px',
+                      opacity: canAfford || item.costXp === 0 ? 1 : 0.5,
+                      cursor: canAfford ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    {purchasingId === item.id ? 'Đang đổi...' : item.id === 'pro_trial_7d' ? 'NÂNG CẤP' : 'ĐỔI NGAY'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* GÓI DOANH NGHIỆP & NHÀ TRƯỜNG (B2B ENTERPRISE) */}
       <div
@@ -246,7 +380,10 @@ export default function ShopRewardPage() {
       <MimoPlusUpgradeModal
         isOpen={showPlusModal}
         onClose={() => setShowPlusModal(false)}
-        onUpgradeSuccess={() => window.location.reload()}
+        onUpgradeSuccess={() => {
+          fetchShop();
+          if (refreshData) refreshData();
+        }}
       />
     </div>
   );

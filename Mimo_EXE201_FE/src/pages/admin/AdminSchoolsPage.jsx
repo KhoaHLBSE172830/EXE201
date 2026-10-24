@@ -23,7 +23,7 @@ export default function AdminSchoolsPage() {
 
   useEffect(() => {
     adminService.getSchools()
-      .then((res) => setSchools(res.data))
+      .then((res) => setSchools(Array.isArray(res?.data) ? res.data : []))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
@@ -45,7 +45,7 @@ export default function AdminSchoolsPage() {
     };
 
     adminService.createSchoolContract(data).then((res) => {
-      setSchools(res.data);
+      setSchools(Array.isArray(res?.data) ? res.data : []);
       setShowCreateModal(false);
       setNewSchoolName('');
       setNewSchoolCode('');
@@ -58,7 +58,7 @@ export default function AdminSchoolsPage() {
     sound.playVictory();
     fireConfetti();
     adminService.generateClassCodes(selectedSchoolForCodes.id, codesCount).then((res) => {
-      setSchools(res.data);
+      setSchools(Array.isArray(res?.data) ? res.data : []);
       alert(`🎉 Đã sinh tự động ${codesCount} dải mã lớp học mới cho ${selectedSchoolForCodes.name}!`);
       setSelectedSchoolForCodes(null);
     });
@@ -68,8 +68,9 @@ export default function AdminSchoolsPage() {
     return <div style={{ textAlign: 'center', padding: '60px', color: '#64748B' }}>Đang tải danh sách trường đối tác...</div>;
   }
 
-  const totalLicensesAll = schools.reduce((sum, s) => sum + s.totalLicenses, 0);
-  const totalActivatedAll = schools.reduce((sum, s) => sum + s.activatedLicenses, 0);
+  const schoolList = Array.isArray(schools) ? schools : [];
+  const totalLicensesAll = schoolList.reduce((sum, s) => sum + (s?.totalLicenses || 0), 0);
+  const totalActivatedAll = schoolList.reduce((sum, s) => sum + (s?.activatedLicenses || 0), 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
@@ -120,7 +121,7 @@ export default function AdminSchoolsPage() {
         <div style={{ background: '#FFFFFF', borderRadius: '20px', border: '1.5px solid #E2E8F0', padding: '20px' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>Số Trường Đối Tác</div>
           <div style={{ fontSize: '28px', fontWeight: 900, color: '#0F172A', marginTop: '4px' }}>
-            {schools.length} trường
+            {schoolList.length} trường
           </div>
         </div>
 
@@ -134,19 +135,21 @@ export default function AdminSchoolsPage() {
         <div style={{ background: '#FFFFFF', borderRadius: '20px', border: '1.5px solid #E2E8F0', padding: '20px' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>Đã Kích Hoạt Thực Tế</div>
           <div style={{ fontSize: '28px', fontWeight: 900, color: '#10B981', marginTop: '4px' }}>
-            {totalActivatedAll.toLocaleString()} <span style={{ fontSize: '13px', color: '#10B981', fontWeight: 700 }}>({Math.round((totalActivatedAll / totalLicensesAll) * 100)}%)</span>
+            {totalActivatedAll.toLocaleString()} <span style={{ fontSize: '13px', color: '#10B981', fontWeight: 700 }}>({totalLicensesAll > 0 ? Math.round((totalActivatedAll / totalLicensesAll) * 100) : 0}%)</span>
           </div>
         </div>
       </div>
 
       {/* DANH SÁCH CÁC TRƯỜNG ĐỐI TÁC */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {schools.map((school) => {
-          const percentUsed = Math.round((school.activatedLicenses / school.totalLicenses) * 100);
+        {schoolList.map((school, idx) => {
+          const totalLic = school?.totalLicenses || 1;
+          const actLic = school?.activatedLicenses || 0;
+          const percentUsed = Math.min(100, Math.round((actLic / totalLic) * 100));
 
           return (
             <div
-              key={school.id}
+              key={school.id || `sch_${idx}`}
               style={{
                 background: '#FFFFFF',
                 borderRadius: '24px',
@@ -224,7 +227,7 @@ export default function AdminSchoolsPage() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '6px' }}>
                   <span style={{ color: '#64748B' }}>
-                    Đã kích hoạt: <strong>{school.activatedLicenses.toLocaleString()}</strong> / {school.totalLicenses.toLocaleString()} suất
+                    Đã kích hoạt: <strong>{actLic.toLocaleString()}</strong> / {(school?.totalLicenses ?? 0).toLocaleString()} suất
                   </span>
                   <span style={{ fontWeight: 800, color: percentUsed >= 90 ? '#15803D' : '#0284C7' }}>
                     {percentUsed}% công suất
@@ -243,9 +246,9 @@ export default function AdminSchoolsPage() {
               {/* DANH SÁCH MÃ LỚP ĐÃ CẤP */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '12px' }}>
                 <span style={{ color: '#64748B', fontWeight: 700 }}>Các mã lớp học sinh nhập:</span>
-                {school.classes?.map((cls, idx) => (
+                {(Array.isArray(school?.classes) ? school.classes : []).map((cls, cIdx) => (
                   <span
-                    key={idx}
+                    key={cIdx}
                     style={{
                       background: '#F8FAFC',
                       border: '1px solid #CBD5E1',

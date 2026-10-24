@@ -1,108 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { learnerService } from '../../services/modules/learnerService';
 import { sound, fireConfetti } from '../../utils/audioEffects';
 
 export default function AchievementsPage() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [activeBadgeModal, setActiveBadgeModal] = useState(null);
   const [activeCertModal, setActiveCertModal] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [badges, setBadges] = useState([]);
+  const [stats, setStats] = useState({ totalBadges: 8, unlockedCount: 0 });
+
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      try {
+        setLoading(true);
+        const res = await learnerService.getAchievements();
+        const data = res?.data || res;
+        const apiBadges = data?.badges || [];
+        const unlockedCount = data?.unlockedBadgesCount ?? apiBadges.filter((b) => b.isUnlocked).length;
+        setStats({
+          totalBadges: data?.totalBadges || apiBadges.length || 8,
+          unlockedCount,
+        });
+
+        if (apiBadges.length > 0) {
+          setBadges(
+            apiBadges.map((b) => ({
+              id: b.id,
+              title: b.title,
+              category: b.category,
+              desc: b.description,
+              icon: b.icon,
+              unlocked: b.isUnlocked,
+              stars: b.isUnlocked ? 3 : 0,
+              date: b.unlockedAt ? new Date(b.unlockedAt).toLocaleDateString('vi-VN') : null,
+              rarity: b.rarity,
+              progress: b.progressPercent || 0,
+              requirement:
+                b.criteriaType === 'StreakDays'
+                  ? `Duy trì chuỗi ${b.criteriaValue} ngày học tập liên tục`
+                  : b.criteriaType === 'TotalXp'
+                  ? `Tích lũy đạt ${b.criteriaValue} XP kỹ năng`
+                  : b.criteriaType === 'PerfectLessons'
+                  ? `Đạt ${b.criteriaValue} bài học hoàn hảo không mất tim`
+                  : b.criteriaType === 'FirstLesson'
+                  ? 'Hoàn thành bài học kỹ năng đầu tiên'
+                  : 'Hoàn thành toàn bộ bài học trong chuyên đề',
+            }))
+          );
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải thành tích:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAchievements();
+  }, []);
 
   const filters = [
-    { id: 'all', label: 'Tất cả (8)' },
-    { id: 'unlocked', label: 'Đã mở khóa (4)' },
-    { id: 'first_aid', label: '🚑 Sơ cứu y tế' },
-    { id: 'fire', label: '🔥 PCCC & Thoát hiểm' },
-    { id: 'cyber', label: '🛡️ An toàn số' },
-  ];
-
-  const badges = [
-    {
-      id: 'b1',
-      title: 'Bàn tay vàng',
-      category: 'first_aid',
-      desc: 'Xử lý hoàn hảo ca sơ cứu bỏng không sai bất kỳ bước nào trong thời gian quy chuẩn.',
-      icon: '🩹',
-      unlocked: true,
-      stars: 3,
-      date: '14/10/2026',
-      rarity: 'Hiếm (12% học viên đạt)',
-    },
-    {
-      id: 'b2',
-      title: 'Chiến binh kiên trì',
-      category: 'all',
-      desc: 'Duy trì ngọn lửa học tập an toàn liên tục trong 7 ngày không bị đứt chuỗi.',
-      icon: '🔥',
-      unlocked: true,
-      stars: 2,
-      date: '16/10/2026',
-      rarity: 'Phổ biến (38% học viên đạt)',
-    },
-    {
-      id: 'b3',
-      title: 'Mắt thần chống Scam',
-      category: 'cyber',
-      desc: 'Vạch mặt chuẩn xác 5 tin nhắn bẫy lừa đảo mạng và đường link độc hại.',
-      icon: '🛡️',
-      unlocked: true,
-      stars: 2,
-      date: '15/10/2026',
-      rarity: 'Khá hiếm (22% học viên đạt)',
-    },
-    {
-      id: 'b4',
-      title: 'Hiệp sĩ Hồi sinh',
-      category: 'first_aid',
-      desc: 'Thực hiện ép tim CPR và thổi ngạt đúng nhịp điệu 30:2 cứu sống nạn nhân ngưng tim.',
-      icon: '🫀',
-      unlocked: true,
-      stars: 1,
-      date: '12/10/2026',
-      rarity: 'Hiếm (15% học viên đạt)',
-    },
-    {
-      id: 'b5',
-      title: 'Khắc tinh giặc lửa',
-      category: 'fire',
-      desc: 'Vượt qua bài thi Boss Thoát hiểm PCCC trong căn hộ chung cư ngập khói độc.',
-      icon: '🚒',
-      unlocked: false,
-      stars: 0,
-      requirement: 'Hoàn thành bài thi Boss Chặng 2 PCCC',
-      rarity: 'Cực hiếm (6% học viên đạt)',
-    },
-    {
-      id: 'b6',
-      title: 'Vua Giải đấu',
-      category: 'all',
-      desc: 'Lọt vào Top 3 Bảng xếp hạng tuần ở Giải Đấu Vàng.',
-      icon: '👑',
-      unlocked: false,
-      stars: 0,
-      requirement: 'Kết thúc chu kỳ tuần ở Top 3 League',
-      rarity: 'Huyền thoại (3% học viên đạt)',
-    },
-    {
-      id: 'b7',
-      title: 'Lá chắn Không gian mạng',
-      category: 'cyber',
-      desc: 'Thiết lập xác thực 2 lớp 2FA và bảo vệ thông tin định danh cá nhân.',
-      icon: '💻',
-      unlocked: false,
-      stars: 0,
-      requirement: 'Hoàn thành 10 thử thách An toàn số',
-      rarity: 'Khá hiếm (18% học viên đạt)',
-    },
-    {
-      id: 'b8',
-      title: 'Bậc thầy Heimlich',
-      category: 'first_aid',
-      desc: 'Khai thông đường thở cho nạn nhân hóc dị vật nguy kịch dưới 30 giây.',
-      icon: '🫁',
-      unlocked: false,
-      stars: 0,
-      requirement: 'Đạt điểm tối đa bài thực hành Heimlich',
-      rarity: 'Hiếm (9% học viên đạt)',
-    },
+    { id: 'all', label: `Tất cả (${stats.totalBadges})` },
+    { id: 'unlocked', label: `Đã mở khóa (${stats.unlockedCount})` },
+    { id: 'first_aid', label: '🩹 Sơ cứu y tế' },
+    { id: 'fire_safety', label: '🔥 PCCC & Thoát hiểm' },
+    { id: 'traffic_safety', label: '🚦 Giao thông' },
+    { id: 'school_safety', label: '🛡️ Học đường' },
   ];
 
   const certificates = [

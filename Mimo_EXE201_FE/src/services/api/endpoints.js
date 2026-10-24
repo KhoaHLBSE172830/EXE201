@@ -6,6 +6,8 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
+    REGISTER_ORGANIZATION: '/auth/register-organization',
+    REGISTER_CURATOR: '/auth/register-curator',
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
     ME: '/auth/me',
@@ -62,27 +64,89 @@ export const API_ENDPOINTS = {
 
   // 2. Phân hệ Tác giả soạn bài (Curator Studio)
   CURATOR: {
-    COURSES: '/curator/courses',
-    CREATE_COURSE: '/curator/courses',
+    PROFILE: '/curator/profile',
+    QUESTIONS: '/curator/questions',
+    QUESTION_DETAIL: (id) => `/curator/questions/${id}`,
+    SUBMIT_QUESTION: (id) => `/curator/questions/${id}/submit-approval`,
+    LESSONS: '/curator/lessons',
+    UPDATE_LESSON_QUESTIONS: (nodeId) => `/curator/lessons/${nodeId}/questions`,
+    SUBMIT_LESSON: (nodeId) => `/curator/lessons/${nodeId}/submit-approval`,
+    PREVIEW_ANSWER: '/curator/preview/answer',
+    ANALYTICS: '/curator/analytics',
+    FEEDBACK: '/curator/feedback',
+    RESOLVE_FEEDBACK: (id) => `/curator/feedback/${id}/resolve`,
+    COURSES: '/curator/lessons',
+    CREATE_COURSE: '/curator/lessons',
     LESSON_EDITOR: (id) => `/curator/lessons/${id}`,
-    SUBMIT_FOR_REVIEW: (id) => `/curator/lessons/${id}/submit`,
+    SUBMIT_FOR_REVIEW: (id) => `/curator/lessons/${id}/submit-approval`,
   },
 
-  // 3. Phân hệ Nhà trường (Educator)
+  // 3. Phân hệ Tổ chức & Doanh nghiệp (B2B / Organization)
+  BUSINESS: {
+    OVERVIEW: '/business/overview',
+    CLASSES: '/business/classes',
+    CREATE_CLASS: '/business/classes',
+    UPDATE_CLASS: (id) => `/business/classes/${id}`,
+    DELETE_CLASS: (id) => `/business/classes/${id}`,
+    ASSIGN_TEACHER: (classId) => `/business/classes/${classId}/assign-teacher`,
+    TEACHER_KEYS: '/business/teachers/keys',
+    GENERATE_KEY: '/business/teachers/keys',
+    REVOKE_KEY: (keyId) => `/business/teachers/keys/${keyId}/revoke`,
+    CAMPAIGNS: '/business/campaigns',
+    CREATE_CAMPAIGN: '/business/campaigns',
+    SKILL_GAP: '/business/skill-gap',
+    REPORTS: '/business/reports',
+    BILLING: '/business/billing',
+  },
+
+  // 4. Lớp học & Thành viên (Classes & Memberships)
+  CLASSES: {
+    JOIN_BY_CODE: '/classes/join-by-code',
+    LEAVE: (classId) => `/classes/${classId}/leave`,
+    HEATMAP: (classId) => `/classes/${classId}/heatmap`,
+    PROGRESS: (classId) => `/classes/${classId}/progress`,
+  },
+
+  // 5. Học sinh & Lớp học của tôi (Learner Classroom)
+  CLASSROOM: {
+    ME: '/classroom/me',
+    JOIN: '/classroom/join',
+    LEAVE: '/classroom/leave',
+  },
+
+  // 6. Phân hệ Giáo viên (Educator)
   EDUCATOR: {
-    OVERVIEW: '/educator/overview',
+    OVERVIEW: '/educator/classes',
     CLASSES: '/educator/classes',
-    STUDENTS: (classId) => `/educator/classes/${classId}/students`,
-    ASSIGNMENTS: '/educator/assignments',
+    STUDENTS: (classId) => `/classes/${classId}/progress`,
+    CLAIM_LICENSE: '/educator/claim-license',
   },
 
   // 4. Phân hệ Quản trị (Admin)
   ADMIN: {
     DASHBOARD: '/admin/analytics',
-    USERS: '/admin/users',
+    SKILL_GAPS: '/admin/skill-gaps',
+    BROADCAST_ALERT: '/admin/broadcast-alert',
     APPROVALS: '/admin/approvals',
+    APPROVAL_DETAIL: (id) => `/admin/approvals/${id}`,
     APPROVE_LESSON: (id) => `/admin/approvals/${id}/approve`,
     REJECT_LESSON: (id) => `/admin/approvals/${id}/reject`,
+    ROLLBACK_LESSON: (id) => `/admin/approvals/${id}/rollback`,
+    CURATORS: '/admin/curators',
+    SETTINGS: '/admin/settings',
+    SETTINGS_RESET: '/admin/settings/reset',
+    USERS: '/admin/users',
+    RESCUE_STREAK: (userId) => `/admin/users/${userId}/rescue-streak`,
+    REFILL_HEARTS: (userId) => `/admin/users/${userId}/refill-hearts`,
+    REWARD_XP: (userId) => `/admin/users/${userId}/reward-xp`,
+    TOGGLE_BAN: (userId) => `/admin/users/${userId}/toggle-ban`,
+    SCHOOLS: '/admin/schools',
+    UPDATE_SCHOOL: (schoolId) => `/admin/schools/${schoolId}`,
+    GENERATE_CLASSES: (schoolId) => `/admin/schools/${schoolId}/generate-classes`,
+    FEEDBACKS: '/admin/feedbacks',
+    RESOLVE_FEEDBACK: (id) => `/admin/feedbacks/${id}/resolve`,
+    MONETIZATION: '/admin/monetization',
+    REFUND: (id) => `/admin/monetization/refund/${id}`,
   },
 
   // 5. Cổng thanh toán (Payment VNPay & Subscription)
@@ -91,5 +155,41 @@ export const API_ENDPOINTS = {
     VNPAY_RETURN: '/payment/vnpay-return',
     MOCK_ACTIVATE: '/payment/mock-activate',
     HISTORY: '/payment/history',
+  },
+
+  // 6. Nhiệm vụ hàng ngày (Quests)
+  QUESTS: {
+    DAILY: '/quests/daily',
+    CLAIM: (id) => `/quests/${id}/claim`,
+  },
+
+  // 7. Cửa hàng đổi thưởng (Shop)
+  SHOP: {
+    ITEMS: '/shop/items',
+    PURCHASE: '/shop/purchase',
+  },
+
+  // 8. Huy hiệu danh hiệu (Achievements)
+  ACHIEVEMENTS: {
+    LIST: '/achievements',
+  },
+
+  // 9. Cẩm nang an toàn sống (Safety Handbook)
+  HANDBOOK: {
+    LIST: (pillar, search) => {
+      const params = new URLSearchParams();
+      if (pillar && pillar !== 'Tất cả') params.append('pillar', pillar);
+      if (search) params.append('search', search);
+      const qs = params.toString();
+      return qs ? `/handbook?${qs}` : '/handbook';
+    },
+    DETAIL: (id) => `/handbook/${id}`,
+  },
+
+  // 10. Hồ sơ & Thống kê học tập (Profile & Study Stats)
+  USERS: {
+    ME: '/users/me',
+    STUDY_STATS: '/users/me/study-stats',
+    UPDATE_PROFILE: '/users/me/profile',
   },
 };

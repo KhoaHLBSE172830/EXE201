@@ -42,8 +42,14 @@ namespace Mimo.DomainLayer.Entities
         [MaxLength(20)]
         public string Status { get; set; } = "Draft";
 
+        public Guid? CuratorId { get; set; }
+
+        [ForeignKey("CuratorId")]
+        public virtual User? Curator { get; set; }
+
         public virtual ICollection<NodeQuestion> NodeQuestions { get; set; } = new List<NodeQuestion>();
         public virtual ICollection<UserNodeProgress> UserNodeProgresses { get; set; } = new List<UserNodeProgress>();
         public virtual ICollection<LessonSession> LessonSessions { get; set; } = new List<LessonSession>();
+        public virtual ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
     }
 }

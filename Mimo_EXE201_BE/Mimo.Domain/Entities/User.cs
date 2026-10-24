@@ -99,5 +99,12 @@ namespace Mimo.DomainLayer.Entities
         public virtual ICollection<LessonSession> LessonSessions { get; set; } = new List<LessonSession>();
         public virtual ICollection<WrongQuestion> WrongQuestions { get; set; } = new List<WrongQuestion>();
         public virtual ICollection<XpEvent> XpEvents { get; set; } = new List<XpEvent>();
+        public virtual ICollection<UserQuest> UserQuests { get; set; } = new List<UserQuest>();
+        public virtual ICollection<UserBadge> UserBadges { get; set; } = new List<UserBadge>();
+        public virtual ICollection<ShopPurchase> ShopPurchases { get; set; } = new List<ShopPurchase>();
+        public virtual ICollection<ClassMember> ClassMembers { get; set; } = new List<ClassMember>();
+        public virtual ICollection<Class> EducatorClasses { get; set; } = new List<Class>();
+        public virtual ICollection<AssignmentProgress> AssignmentProgresses { get; set; } = new List<AssignmentProgress>();
+        public virtual ICollection<TeacherLicense> ClaimedTeacherLicenses { get; set; } = new List<TeacherLicense>();
     }
 }

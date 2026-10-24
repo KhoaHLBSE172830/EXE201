@@ -32,6 +32,13 @@ public static class DependencyInjection
         services.AddScoped<IAdminFeedbackService, AdminFeedbackService>();
         services.AddScoped<IAdminMonetizationService, AdminMonetizationService>();
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IQuestService, QuestService>();
+        services.AddScoped<IShopService, ShopService>();
+        services.AddScoped<IAchievementService, AchievementService>();
+        services.AddScoped<IHandbookService, HandbookService>();
+        services.AddScoped<IClassMembershipService, ClassMembershipService>();
+        services.AddScoped<IBusinessService, BusinessService>();
+        services.AddScoped<ICuratorContentService, CuratorContentService>();
         return services;
     }
 }

@@ -26,5 +26,16 @@ namespace Mimo.Application.DTOs.Gameplay
         public StreakResultDto? StreakInfo { get; set; }
 
         public Guid? UnlockedNextNodeId { get; set; }
+
+        public AssignmentResultDto? AssignmentResult { get; set; }
+    }
+
+    public class AssignmentResultDto
+    {
+        public Guid AssignmentId { get; set; }
+        public int Score { get; set; }
+        public bool IsPassed { get; set; }
+        public bool IsLate { get; set; }
+        public int RewardXp { get; set; }
     }
 }

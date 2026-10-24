@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 
   // Tự động đồng bộ trạng thái VIP/Pro và dữ liệu từ Supabase Database khi app khởi chạy hoặc khi có token
   useEffect(() => {
-    if (!token) return;
+    if (!token || token.startsWith('mock-token-')) return;
     let isMounted = true;
 
     apiClient.get(API_ENDPOINTS.AUTH.ME)

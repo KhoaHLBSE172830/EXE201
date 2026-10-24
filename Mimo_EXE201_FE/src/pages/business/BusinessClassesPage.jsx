@@ -64,11 +64,13 @@ export default function BusinessClassesPage() {
 
   // Lọc lớp
   const filteredClasses = classes.filter((c) => {
+    const code = c.code || c.classCode || '';
+    const teacher = c.teacherName || c.educatorName || '';
     const matchGrade = filterGrade === 'ALL' || c.grade === filterGrade;
     const matchSearch =
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.teacherName.toLowerCase().includes(searchTerm.toLowerCase());
+      (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacher.toLowerCase().includes(searchTerm.toLowerCase());
     return matchGrade && matchSearch;
   });
 
@@ -152,7 +154,7 @@ export default function BusinessClassesPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px' }}>
-                    {cls.grade} • {cls.code}
+                    {cls.grade} • {cls.code || cls.classCode}
                   </span>
                   <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', marginTop: '6px' }}>
                     {cls.name}
@@ -165,20 +167,20 @@ export default function BusinessClassesPage() {
                     fontWeight: 800,
                     padding: '3px 8px',
                     borderRadius: '6px',
-                    background: cls.complianceRate >= 90 ? '#DCFCE7' : '#FEF3C7',
-                    color: cls.complianceRate >= 90 ? '#15803D' : '#D97706',
+                    background: (cls.complianceRate || 0) >= 90 ? '#DCFCE7' : '#FEF3C7',
+                    color: (cls.complianceRate || 0) >= 90 ? '#15803D' : '#D97706',
                   }}
                 >
-                  {cls.complianceRate}% Hoàn thành
+                  {cls.complianceRate || 0}% Hoàn thành
                 </span>
               </div>
 
               <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '10px' }}>
-                📍 {cls.room} • 👥 <strong>{cls.studentsCount} học sinh</strong>
+                📍 {cls.room} • 👥 <strong>{cls.studentsCount || 0} học sinh</strong>
               </div>
 
               <div style={{ fontSize: '12.5px', color: '#334155', marginTop: '4px' }}>
-                🎯 Chuyên đề: <strong>{cls.focusTopic}</strong>
+                🎯 Chuyên đề: <strong>{cls.focusTopic || 'Kỹ năng sinh tồn cơ bản'}</strong>
               </div>
 
               {/* GIÁO VIÊN PHỤ TRÁCH */}
@@ -194,7 +196,7 @@ export default function BusinessClassesPage() {
               >
                 <div style={{ color: '#64748B', fontSize: '11px', fontWeight: 700 }}>GIÁO VIÊN PHỤ TRÁCH:</div>
                 <div style={{ color: '#0284C7', fontWeight: 800, marginTop: '2px' }}>
-                  👨‍🏫 {cls.teacherName}
+                  👨‍🏫 {cls.teacherName || cls.educatorName || 'Chưa phân công'}
                 </div>
               </div>
             </div>

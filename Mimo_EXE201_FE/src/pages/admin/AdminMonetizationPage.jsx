@@ -16,8 +16,8 @@ export default function AdminMonetizationPage() {
   useEffect(() => {
     adminService.getMonetizationData()
       .then((res) => {
-        setData(res.data);
-        setTransactions(res.data.transactions || []);
+        setData(res?.data || {});
+        setTransactions(Array.isArray(res?.data?.transactions) ? res.data.transactions : []);
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
@@ -26,7 +26,7 @@ export default function AdminMonetizationPage() {
   const handleOpenEdit = (plan) => {
     sound.playClick();
     setEditingPlan(plan);
-    setNewPrice(plan.price || plan.pricePerSeat);
+    setNewPrice(plan.price || plan.pricePerSeat || 0);
   };
 
   const handleSavePrice = (e) => {
@@ -36,9 +36,9 @@ export default function AdminMonetizationPage() {
 
     setData((prev) => ({
       ...prev,
-      plans: prev.plans.map((p) => {
-        if (p.id === editingPlan.id) {
-          return p.price ? { ...p, price: Number(newPrice) } : { ...p, pricePerSeat: Number(newPrice) };
+      plans: (Array.isArray(prev?.plans) ? prev.plans : []).map((p) => {
+        if (p.id === editingPlan?.id) {
+          return p.price !== undefined ? { ...p, price: Number(newPrice) } : { ...p, pricePerSeat: Number(newPrice) };
         }
         return p;
       }),
@@ -49,11 +49,11 @@ export default function AdminMonetizationPage() {
   };
 
   const handleRefund = (txId, customerName, amount) => {
-    if (!window.confirm(`Xác nhận hoàn tiền ${amount.toLocaleString()} VNĐ cho khách hàng "${customerName}"?`)) return;
+    if (!window.confirm(`Xác nhận hoàn tiền ${(amount ?? 0).toLocaleString()} VNĐ cho khách hàng "${customerName}"?`)) return;
 
     sound.playClick();
     setTransactions((prev) =>
-      prev.map((tx) => (tx.id === txId ? { ...tx, status: 'REFUNDED' } : tx))
+      (Array.isArray(prev) ? prev : []).map((tx) => (tx.id === txId ? { ...tx, status: 'REFUNDED' } : tx))
     );
     alert(`💸 Đã thực hiện lệnh hoàn tiền thành công cho mã giao dịch ${txId}!`);
   };
@@ -89,17 +89,17 @@ export default function AdminMonetizationPage() {
         <div style={{ background: '#FFFFFF', borderRadius: '20px', border: '1.5px solid #E2E8F0', padding: '22px' }}>
           <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#64748B' }}>Doanh Thu Tháng Này (MRR)</div>
           <div style={{ fontSize: '28px', fontWeight: 900, color: '#10B981', marginTop: '4px' }}>
-            {data.monthlyRevenue.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 700 }}>VNĐ</span>
+            {(data?.monthlyRevenue ?? 0).toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 700 }}>VNĐ</span>
           </div>
           <div style={{ fontSize: '12px', color: '#15803D', fontWeight: 700, marginTop: '6px' }}>
-            ▲ +{data.growthPercent}% so với tháng trước
+            ▲ +{data?.growthPercent ?? 0}% so với tháng trước
           </div>
         </div>
 
         <div style={{ background: '#FFFFFF', borderRadius: '20px', border: '1.5px solid #E2E8F0', padding: '22px' }}>
           <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#64748B' }}>Doanh Thu B2C Cá Nhân</div>
           <div style={{ fontSize: '28px', fontWeight: 900, color: '#0284C7', marginTop: '4px' }}>
-            {data.b2cRevenue.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 700 }}>VNĐ</span>
+            {(data?.b2cRevenue ?? 0).toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 700 }}>VNĐ</span>
           </div>
           <div style={{ fontSize: '12px', color: '#64748B', marginTop: '6px' }}>
             525 thuê bao MIMO Plus đang hoạt động
@@ -109,7 +109,7 @@ export default function AdminMonetizationPage() {
         <div style={{ background: '#FFFFFF', borderRadius: '20px', border: '1.5px solid #E2E8F0', padding: '22px' }}>
           <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#64748B' }}>Doanh Thu B2B Trường Học</div>
           <div style={{ fontSize: '28px', fontWeight: 900, color: '#8B5CF6', marginTop: '4px' }}>
-            {data.b2bRevenue.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 700 }}>VNĐ</span>
+            {(data?.b2bRevenue ?? 0).toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 700 }}>VNĐ</span>
           </div>
           <div style={{ fontSize: '12px', color: '#64748B', marginTop: '6px' }}>
             4 hợp đồng trường học (5.210 suất)
@@ -135,9 +135,9 @@ export default function AdminMonetizationPage() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
-          {data.plans.map((p) => (
+          {(Array.isArray(data?.plans) ? data.plans : []).map((p, pIdx) => (
             <div
-              key={p.id}
+              key={p.id || `plan_${pIdx}`}
               style={{
                 border: '1.5px solid #CBD5E1',
                 borderRadius: '20px',
@@ -168,11 +168,11 @@ export default function AdminMonetizationPage() {
                 </h3>
 
                 <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', marginBottom: '14px' }}>
-                  {(p.price || p.pricePerSeat)?.toLocaleString()} <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>đ / {p.price ? 'chu kỳ' : 'suất'}</span>
+                  {((p.price ?? p.pricePerSeat) ?? 0).toLocaleString()} <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>đ / {p.price ? 'chu kỳ' : 'suất'}</span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px', color: '#475569' }}>
-                  {p.features?.map((f, i) => (
+                  {(Array.isArray(p.features) ? p.features : []).map((f, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span style={{ color: '#16A34A', fontWeight: 800 }}>✓</span>
                       <span>{f}</span>
@@ -218,7 +218,7 @@ export default function AdminMonetizationPage() {
         </h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-          {data.gateways?.map((gw, idx) => (
+          {(Array.isArray(data?.gateways) ? data.gateways : []).map((gw, idx) => (
             <div
               key={idx}
               style={{
@@ -273,8 +273,8 @@ export default function AdminMonetizationPage() {
             </tr>
           </thead>
           <tbody>
-            {transactions.map((tx) => (
-              <tr key={tx.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+            {(Array.isArray(transactions) ? transactions : []).map((tx, idx) => (
+              <tr key={tx.id || `tx_${idx}`} style={{ borderBottom: '1px solid #F1F5F9' }}>
                 <td style={{ padding: '14px 18px', fontWeight: 800, color: '#0F172A', fontSize: '13px' }}>
                   {tx.id}
                 </td>
@@ -285,7 +285,7 @@ export default function AdminMonetizationPage() {
                   {tx.plan}
                 </td>
                 <td style={{ padding: '14px 18px', fontWeight: 900, color: '#0F172A', fontSize: '14px' }}>
-                  {tx.amount.toLocaleString()} đ
+                  {(tx?.amount ?? 0).toLocaleString()} đ
                 </td>
                 <td style={{ padding: '14px 18px', fontSize: '12.5px', color: '#64748B' }}>
                   {tx.method}

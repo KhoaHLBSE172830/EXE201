@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { sound, fireConfetti } from '../../utils/audioEffects';
 import { learnerService } from '../../services/modules/learnerService';
@@ -8,6 +8,7 @@ import TeacherClassroomView from './TeacherClassroomView';
 export default function MyClassroomPage() {
   const { data, refreshData } = useOutletContext();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [classCodeInput, setClassCodeInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -17,7 +18,25 @@ export default function MyClassroomPage() {
   const isTeacherUser = user?.role === 'EDUCATOR' || user?.orgRole === 'TEACHER' || user?.email?.includes('educator') || user?.email?.includes('nam') || user?.email?.includes('mai');
   const [viewMode, setViewMode] = useState(isTeacherUser ? 'TEACHER' : 'LEARNER');
 
-  const classroom = data?.classroom || { joined: false };
+  const [classroomData, setClassroomData] = useState(data?.classroom || { joined: false });
+
+  const fetchClassroom = () => {
+    learnerService.getMyClassroom()
+      .then((res) => {
+        if (res?.data) {
+          setClassroomData(res.data);
+        } else if (res?.classroom) {
+          setClassroomData(res.classroom);
+        }
+      })
+      .catch((err) => console.warn('getMyClassroom fallback:', err));
+  };
+
+  useEffect(() => {
+    fetchClassroom();
+  }, []);
+
+  const classroom = classroomData || { joined: false };
 
   // 3 Mã lớp mẫu dành riêng cho các trường đối tác
   const sampleClasses = [
@@ -64,11 +83,12 @@ export default function MyClassroomPage() {
         sound.playVictory();
         fireConfetti();
         setClassCodeInput('');
-        refreshData();
+        fetchClassroom();
+        if (refreshData) refreshData();
       })
       .catch((err) => {
         sound.playWrong();
-        setErrorMsg(err.message || 'Mã lớp không hợp lệ hoặc đã hết hạn. Hãy kiểm tra lại!');
+        setErrorMsg(err.response?.data?.message || err.message || 'Mã lớp không hợp lệ hoặc đã hết hạn. Hãy kiểm tra lại!');
       })
       .finally(() => {
         setLoading(false);
@@ -78,15 +98,15 @@ export default function MyClassroomPage() {
   const handleLeaveClass = () => {
     sound.playClick();
     learnerService.leaveClassroom().then(() => {
-      refreshData();
+      fetchClassroom();
+      if (refreshData) refreshData();
     });
   };
 
-  const handleCompleteAssignment = (asn) => {
-    sound.playVictory();
-    fireConfetti();
-    alert(`🎉 Xuất sắc! Bạn đã nộp bài tập "${asn.title}" thành công và nhận +${asn.rewardXp} XP vào sổ điểm trường học!`);
-    setActiveAssignment(null);
+  const handleStartAssignment = (asn) => {
+    sound.playClick();
+    const targetNodeId = asn.nodeId || 'c1111111-1111-1111-1111-111111111111';
+    navigate(`/learn/lesson/${targetNodeId}?assignmentId=${asn.id}`);
   };
 
   // Nếu đang ở góc nhìn Giáo viên
@@ -642,11 +662,11 @@ export default function MyClassroomPage() {
                 ĐỂ SAU
               </button>
               <button
-                onClick={() => handleCompleteAssignment(activeAssignment)}
+                onClick={() => handleStartAssignment(activeAssignment)}
                 className="btn-3d btn-3d-green"
                 style={{ flex: 1.5 }}
               >
-                NỘP BÀI THỰC HÀNH ➔
+                VÀO LÀM BÀI NGAY ➔
               </button>
             </div>
           </div>

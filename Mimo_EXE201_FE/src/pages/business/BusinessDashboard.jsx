@@ -17,8 +17,11 @@ export default function BusinessDashboard() {
       businessService.getSkillGapAnalysis(),
     ]).then(([resOrg, resClasses, resGaps]) => {
       if (resOrg?.data) setOrg(resOrg.data);
-      if (resClasses?.data) setClasses(resClasses.data);
-      if (resGaps?.data) setSkillGaps(resGaps.data);
+      if (resClasses?.data) setClasses(Array.isArray(resClasses.data) ? resClasses.data : []);
+      if (resGaps?.data) {
+        const rawGaps = resGaps.data;
+        setSkillGaps(Array.isArray(rawGaps) ? rawGaps : (rawGaps?.domains || []));
+      }
       setLoading(false);
     });
   }, []);
@@ -31,8 +34,8 @@ export default function BusinessDashboard() {
   const grades = ['Khối 10', 'Khối 11', 'Khối 12'];
   const gradeStats = grades.map((grade) => {
     const list = classes.filter((c) => c.grade === grade);
-    const totalStudents = list.reduce((sum, c) => sum + c.studentsCount, 0);
-    const completedStudents = list.reduce((sum, c) => sum + c.completedStudents, 0);
+    const totalStudents = list.reduce((sum, c) => sum + (c.studentsCount || c.maxStudents || 0), 0);
+    const completedStudents = list.reduce((sum, c) => sum + (c.completedStudents || 0), 0);
     const rate = totalStudents > 0 ? ((completedStudents / totalStudents) * 100).toFixed(1) : 0;
     return {
       grade,
@@ -42,6 +45,12 @@ export default function BusinessDashboard() {
       rate: Number(rate),
     };
   });
+
+  const orgName = org?.name || org?.organizationName || 'Trường THPT FPT Cần Thơ';
+  const complianceRate = org?.metrics?.complianceRate ?? org?.complianceRate ?? 86.4;
+  const usedSeats = org?.plan?.usedSeats ?? org?.usedSeats ?? 120;
+  const totalSeats = org?.plan?.totalSeats ?? org?.seatCount ?? 500;
+  const remainingSeats = Math.max(0, totalSeats - usedSeats);
 
   return (
     <div>
@@ -53,7 +62,7 @@ export default function BusinessDashboard() {
             <span>Bảng Điều Khiển Quản Trị Trường Học</span>
           </h1>
           <p className="biz-page-subtitle">
-            Hệ thống giám sát tuân thủ an toàn sinh tồn & PCCC học đường — {org?.name}
+            Hệ thống giám sát tuân thủ an toàn sinh tồn & PCCC học đường — {orgName}
           </p>
         </div>
 
@@ -89,7 +98,7 @@ export default function BusinessDashboard() {
         <div className="biz-card" style={{ marginBottom: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: 700, color: '#64748B' }}>TỶ LỆ TUÂN THỦ TOÀN TRƯỜNG</div>
           <div style={{ fontSize: '32px', fontWeight: 900, color: '#15803D', marginTop: '6px' }}>
-            {org?.metrics?.complianceRate || 86.4}%
+            {complianceRate}%
           </div>
           <div style={{ fontSize: '12px', color: '#16A34A', marginTop: '4px', fontWeight: 700 }}>
             🟢 Đạt chuẩn an toàn Sở GD&ĐT (Mục tiêu ≥80%)
@@ -99,10 +108,10 @@ export default function BusinessDashboard() {
         <div className="biz-card" style={{ marginBottom: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: 700, color: '#64748B' }}>HẠN NGẠCH SUẤT HỌC (SEATS)</div>
           <div style={{ fontSize: '32px', fontWeight: 900, color: '#0284C7', marginTop: '6px' }}>
-            {org?.plan?.usedSeats} <span style={{ fontSize: '18px', color: '#94A3B8' }}>/ {org?.plan?.totalSeats}</span>
+            {usedSeats} <span style={{ fontSize: '18px', color: '#94A3B8' }}>/ {totalSeats}</span>
           </div>
           <div style={{ fontSize: '12px', color: '#0369A1', marginTop: '4px', fontWeight: 700 }}>
-            Còn trống {org?.plan?.totalSeats - org?.plan?.usedSeats} suất học sinh
+            Còn trống {remainingSeats} suất học sinh
           </div>
         </div>
 
@@ -211,9 +220,9 @@ export default function BusinessDashboard() {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
-          {skillGaps.map((gap) => (
+          {(Array.isArray(skillGaps) ? skillGaps : (skillGaps?.domains || [])).map((gap, idx) => (
             <div
-              key={gap.id}
+              key={gap.id || gap.domainId || `gap_${idx}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -229,17 +238,17 @@ export default function BusinessDashboard() {
               <div style={{ flex: 1, minWidth: '240px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                   <span style={{ background: '#EF4444', color: '#FFF', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px' }}>
-                    {gap.topic}
+                    {gap.topic || gap.domainName || 'Kỹ năng'}
                   </span>
                   <span style={{ fontWeight: 800, fontSize: '14px', color: '#991B1B' }}>
-                    {gap.failRate}% Học sinh trả lời sai
+                    {gap.failRate ?? Math.round(gap.wrongRate || 0)}% Học sinh trả lời sai
                   </span>
                 </div>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#1F2937' }}>
-                  {gap.question}
+                  {gap.question || `Lỗ hổng kỹ năng: ${gap.domainName || 'Chủ đề'}`}
                 </div>
                 <div style={{ fontSize: '12.5px', color: '#4B5563', marginTop: '4px' }}>
-                  <strong>Lỗi phổ biến:</strong> {gap.commonMistake} • <span style={{ color: '#DC2626' }}>Yếu nhất: {gap.worstClass}</span>
+                  <strong>Lỗi phổ biến:</strong> {gap.commonMistake || `Tỷ lệ sai ${gap.wrongRate || 0}%`} • <span style={{ color: '#DC2626' }}>Yếu nhất: {gap.worstClass || 'Toàn trường'}</span>
                 </div>
               </div>
 
@@ -249,7 +258,7 @@ export default function BusinessDashboard() {
                 style={{ fontSize: '12px', padding: '8px 12px', background: '#FFF' }}
                 onClick={() => {
                   sound.playClick();
-                  alert(`📢 Đã gửi thông báo cảnh báo chuyên đề "${gap.topic}" đến tất cả Giáo viên bộ môn để nhắc nhở học sinh!`);
+                  alert(`📢 Đã gửi thông báo cảnh báo chuyên đề "${gap.topic || gap.domainName || 'Kỹ năng'}" đến tất cả Giáo viên bộ môn để nhắc nhở học sinh!`);
                 }}
               >
                 ⚡ Bắn cảnh báo cho GV

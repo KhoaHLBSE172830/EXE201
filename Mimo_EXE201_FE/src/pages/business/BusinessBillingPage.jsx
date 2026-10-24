@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { businessService } from '../../services/modules/businessService';
 import { sound, fireConfetti } from '../../utils/audioEffects';
 
 export default function BusinessBillingPage() {
   const [totalSeats, setTotalSeats] = useState(500);
-  const [usedSeats, setUsedSeats] = useState(412);
+  const [usedSeats, setUsedSeats] = useState(120);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [selectedPack, setSelectedPack] = useState({ seats: 50, price: 1250000 });
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    businessService.getBilling().then((res) => {
+      const data = res?.data || res;
+      if (data) {
+        if (data.totalSeats) setTotalSeats(data.totalSeats);
+        if (typeof data.usedSeats === 'number') setUsedSeats(data.usedSeats);
+      }
+    });
+  }, []);
 
   const packs = [
     { seats: 50, price: 1250000, label: 'Nạp thêm +50 Suất', discount: 'Chuẩn B2B' },

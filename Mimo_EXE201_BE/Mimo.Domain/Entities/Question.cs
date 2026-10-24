@@ -64,5 +64,6 @@ namespace Mimo.DomainLayer.Entities
         public virtual ICollection<NodeQuestion> NodeQuestions { get; set; } = new List<NodeQuestion>();
         public virtual ICollection<SessionAnswer> SessionAnswers { get; set; } = new List<SessionAnswer>();
         public virtual ICollection<WrongQuestion> WrongQuestions { get; set; } = new List<WrongQuestion>();
+        public virtual ICollection<QuestionFeedback> QuestionFeedbacks { get; set; } = new List<QuestionFeedback>();
     }
 }

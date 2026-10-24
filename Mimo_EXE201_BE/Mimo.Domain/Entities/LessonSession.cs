@@ -22,6 +22,9 @@ namespace Mimo.DomainLayer.Entities
 
         public Guid? AssignmentId { get; set; }
 
+        [ForeignKey("AssignmentId")]
+        public virtual Assignment? Assignment { get; set; }
+
         /// <summary>
         /// in_progress | completed | failed
         /// </summary>
