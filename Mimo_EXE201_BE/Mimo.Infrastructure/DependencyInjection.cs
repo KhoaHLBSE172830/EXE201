@@ -60,6 +60,9 @@ public static class DependencyInjection
         services.Configure<SupabaseStorageOptions>(configuration.GetSection(SupabaseStorageOptions.SectionName));
         services.AddHttpClient<IStorageService, SupabaseStorageService>();
 
+        // VNPay Payment Options
+        services.Configure<Mimo.Application.Helper.Payment.VnPayOptions>(configuration.GetSection(Mimo.Application.Helper.Payment.VnPayOptions.SectionName));
+
         return services;
     }
 }

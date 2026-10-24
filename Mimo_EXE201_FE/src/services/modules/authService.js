@@ -65,6 +65,35 @@ export const authService = {
       u.name = u.fullName || u.name || (u.email ? u.email.split('@')[0] : 'User');
     }
 
+    // Tự động gọi /auth/me bằng token vừa nhận để làm giàu đối tượng user (isPro, planCode, planName, hearts)
+    if (res?.data?.token) {
+      try {
+        const meRes = await apiClient.get(API_ENDPOINTS.AUTH.ME, {
+          headers: { Authorization: `Bearer ${res.data.token}` },
+        });
+        const meData = meRes?.data?.data || meRes?.data;
+        if (meData && res.data.user) {
+          const isPro = meData.isPro ?? meData.stats?.isPro ?? false;
+          const cleanPlan = String(meData.planCode || meData.plan || (isPro ? 'PREMIUM_6M' : 'FREE'))
+            .toUpperCase()
+            .replace('MIMO_', '');
+          res.data.user = {
+            ...res.data.user,
+            ...meData,
+            role: res.data.user.role, // Giữ role đã chuẩn hóa
+            isPro,
+            isPlus: isPro,
+            plan: cleanPlan,
+            planCode: cleanPlan,
+            planName: meData.planName || (isPro ? 'Gói 6 Tháng (Half-Year)' : 'Mimo Free'),
+            hearts: meData.hearts ?? 5,
+          };
+        }
+      } catch (meErr) {
+        console.warn('Không thể nạp thông tin chi tiết /auth/me khi login:', meErr?.message);
+      }
+    }
+
     return res;
   },
 

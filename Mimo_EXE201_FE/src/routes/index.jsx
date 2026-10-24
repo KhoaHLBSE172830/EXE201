@@ -39,6 +39,7 @@ import MyClassroomPage from '../pages/learner/MyClassroomPage';
 import PracticeRoomPage from '../pages/learner/PracticeRoomPage';
 import LessonPlayPage from '../pages/learner/LessonPlayPage';
 import UpgradePlanPage from '../pages/learner/UpgradePlanPage';
+import PaymentResultPage from '../pages/learner/PaymentResultPage';
 
 // Curator Pages
 import StudioDashboard from '../pages/curator/StudioDashboard';
@@ -62,6 +63,12 @@ import Forbidden403 from '../pages/error/Forbidden403';
 import NotFound404 from '../pages/error/NotFound404';
 
 export const router = createBrowserRouter([
+  // KẾT QUẢ THANH TOÁN VNPAY CALLBACK
+  {
+    path: '/payment-result',
+    element: <PaymentResultPage />,
+  },
+
   // 1. CÁC TRANG CỘNG ĐỒNG / PUBLIC
   {
     path: '/',

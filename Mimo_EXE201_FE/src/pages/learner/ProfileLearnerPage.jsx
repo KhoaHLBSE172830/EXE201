@@ -76,6 +76,31 @@ export default function ProfileLearnerPage() {
     { id: 'sb3', name: 'Lê Hoàng Bảo', school: 'THPT Lê Quý Đôn', xp: 2760, avatar: '👦🏽', status: 'Học hôm qua' },
   ];
 
+  // Lấy trạng thái gói Pro tinh gọn
+  const rawUser = localStorage.getItem('mimo_user');
+  let userPlanInfo = null;
+  try {
+    userPlanInfo = rawUser ? JSON.parse(rawUser) : null;
+  } catch (e) {}
+
+  const isProActive =
+    user?.isPro === true ||
+    userPlanInfo?.isPro === true ||
+    userPlanInfo?.isPlus === true ||
+    (userPlanInfo?.plan && userPlanInfo?.plan !== 'FREE');
+
+  const currentPlanName =
+    userPlanInfo?.planName ||
+    (userPlanInfo?.plan === 'PREMIUM_6M'
+      ? 'Gói 6 Tháng'
+      : userPlanInfo?.plan === 'PREMIUM_3M'
+      ? 'Gói 3 Tháng'
+      : userPlanInfo?.plan === 'PREMIUM_1M'
+      ? 'Gói 1 Tháng'
+      : isProActive
+      ? 'Mimo Pro'
+      : 'Mimo Free');
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '960px', margin: '0 auto' }}>
       {/* 1. HEADER TRANG HỒ SƠ */}
@@ -183,7 +208,7 @@ export default function ProfileLearnerPage() {
           </div>
 
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', margin: 0 }}>
                 {fullName}
               </h2>
@@ -199,10 +224,34 @@ export default function ProfileLearnerPage() {
               >
                 ĐÃ XÁC THỰC
               </span>
+              {isProActive && (
+                <span
+                  style={{
+                    background: 'linear-gradient(135deg, #7C3AED, #9333EA)',
+                    color: '#FFFFFF',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    padding: '3px 10px',
+                    borderRadius: '999px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                  }}
+                  title="Học viên Mimo Pro đặc quyền vô hạn tim"
+                >
+                  👑 Pro
+                </span>
+              )}
             </div>
 
             <div style={{ fontSize: '13.5px', color: '#64748B', margin: '4px 0 10px 0' }}>
               {user?.email || 'learner@mimo.com'} • Mã học sinh: <strong>MIMO-HS-2026</strong>
+              {isProActive && (
+                <>
+                  {' '}• Gói: <strong style={{ color: '#7C3AED' }}>{currentPlanName} (Pro)</strong>
+                </>
+              )}
             </div>
 
             <p style={{ fontSize: '13px', color: '#334155', margin: 0, fontStyle: 'italic', maxWidth: '480px' }}>

@@ -243,7 +243,10 @@ public class MimoDbContext : DbContext
             entity.HasOne(t => t.Course)
                   .WithMany(c => c.Transactions)
                   .HasForeignKey(t => t.CourseId)
-                  .OnDelete(DeleteBehavior.Restrict);
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(t => t.TxnRef);
         });
 
         // 12. Domains

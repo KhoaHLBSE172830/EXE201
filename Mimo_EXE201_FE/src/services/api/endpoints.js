@@ -84,4 +84,12 @@ export const API_ENDPOINTS = {
     APPROVE_LESSON: (id) => `/admin/approvals/${id}/approve`,
     REJECT_LESSON: (id) => `/admin/approvals/${id}/reject`,
   },
+
+  // 5. Cổng thanh toán (Payment VNPay & Subscription)
+  PAYMENT: {
+    CREATE_VNPAY_URL: '/payment/create-vnpay-url',
+    VNPAY_RETURN: '/payment/vnpay-return',
+    MOCK_ACTIVATE: '/payment/mock-activate',
+    HISTORY: '/payment/history',
+  },
 };

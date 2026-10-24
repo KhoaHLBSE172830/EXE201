@@ -24,7 +24,19 @@ export default function LearnerTopHeader({
   const [showPlusModal, setShowPlusModal] = useState(false);
 
   const rawUser = localStorage.getItem('mimo_user');
-  const isPlusUser = rawUser?.includes('PLUS') || false;
+  let userObj = null;
+  try {
+    userObj = rawUser ? JSON.parse(rawUser) : null;
+  } catch (e) {
+    console.error(e);
+  }
+  const isPlusUser =
+    userObj?.isPro === true ||
+    userObj?.isPlus === true ||
+    (userObj?.plan && userObj?.plan !== 'FREE') ||
+    stats?.isPro === true ||
+    rawUser?.includes('PLUS') ||
+    false;
 
   const currentDomainObj = domains.find((d) => d.id === activeDomain) || {
     name: 'Sơ cấp cứu ban đầu',

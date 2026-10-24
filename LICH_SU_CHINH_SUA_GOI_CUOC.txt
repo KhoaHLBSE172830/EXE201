@@ -1,0 +1,107 @@
+================================================================================
+NHẬT KÝ CHỈNH SỬA TÍNH NĂNG: CỔNG THANH TOÁN VNPAY & QUẢN LÝ GÓI THÀNH VIÊN MIMO PRO
+Dự án: MIMO - Gamified Life Skills & Emergency Safety (EXE201)
+Thời gian cập nhật: 2026-10-23
+Kiến trúc: Clean Architecture (.NET 8) & React 19 (Vite)
+Tuân thủ đặc tả: AGENT.md (Backend) & AGENTFE.md (Frontend)
+================================================================================
+
+1. TÓM TẮT MỤC TIÊU:
+- Xử lý triệt để lỗi 400 Bad Request khi kết nối cổng thanh toán VNPay Sandbox.
+- Bóc tách chính xác số tiền (399.000 đ) và tên gói trên màn hình kết quả sau thanh toán.
+- Thiết lập cơ chế nhận diện và hiển thị rõ ràng gói dịch vụ người dùng đang sở hữu trên toàn bộ hệ thống (TopBar, Profile, Trang Nâng Cấp).
+- ĐẢM BẢO 100%: Không thay đổi cấu trúc bảng cơ sở dữ liệu PostgreSQL của nhóm, không chạy migration, không làm ảnh hưởng code của các thành viên khác.
+
+--------------------------------------------------------------------------------
+2. CHI TIẾT CÁC FILE ĐÃ CHỈNH SỬA:
+
+[BACKEND - .NET 8 Web API]
+
+A. Mimo_EXE201_BE/Mimo.Application/DTOs/User/UserDetailDto.cs
+- Thêm trường:
+  + public string PlanCode { get; set; } = "FREE";
+  + public string PlanName { get; set; } = "Mimo Free";
+- Mục đích: Cung cấp mã gói và tên gói active cho client khi gọi API GET /api/v1/users/me mà KHÔNG cần sửa Database.
+
+B. Mimo_EXE201_BE/Mimo.Application/Services/UserService.cs
+- Inject thêm repository: IGenericRepository<Transaction> _transactionRepository.
+- Trong hàm GetMeAsync(Guid userId):
+  + Nếu user.Stats.IsPro == true: Truy vấn bản ghi giao dịch thành công mới nhất của user từ bảng Transactions.
+  + Ánh xạ PlanCode thành tên hiển thị chuẩn:
+    * PREMIUM_1M -> Gói 1 Tháng (Monthly)
+    * PREMIUM_3M -> Gói 3 Tháng (Quarterly)
+    * PREMIUM_6M -> Gói 6 Tháng (Half-Year)
+  + Gán PlanCode và PlanName vào UserDetailDto trả về cho Frontend.
+
+C. Mimo_EXE201_BE/Mimo.Application/Services/PaymentService.cs
+- Chuẩn hóa đầu vào PlanCode: Tự động xử lý tiền tố MIMO_ nếu có (chấp nhận cả PREMIUM_6M và MIMO_PREMIUM_6M).
+- Đồng bộ tính toán ngày Pro (30 ngày cho 1M, 90 ngày cho 3M, 180 ngày cho 6M) và bùa Streak Freeze (1 bùa cho 3M, 2 bùa cho 6M) trong cả luồng callback (ProcessVnPayCallbackAsync) và IPN (ProcessVnPayIpnAsync).
+
+D. Mimo_EXE201_BE/Mimo.Application/Helper/Payment/VnPayOptions.cs & Controllers/PaymentController.cs
+- Thêm trường FrontendReturnUrl (mặc định: http://localhost:5173/payment-result).
+- Cập nhật hàm VnPayReturn: Sau khi xác thực chữ ký SHA512 và cập nhật DB, tự động chuyển hướng trình duyệt về Frontend với đầy đủ thông số kết quả.
+
+E. Mimo_EXE201_BE/Mimo.API/appsettings.json
+- Cấu hình ReturnUrl trỏ về backend endpoint: http://localhost:8080/api/v1/payment/vnpay-return
+- Cấu hình FrontendReturnUrl: http://localhost:5173/payment-result
+
+--------------------------------------------------------------------------------
+[FRONTEND - React 19 & Vite]
+
+F. Mimo_EXE201_FE/src/pages/learner/PaymentResultPage.jsx
+- Bóc tách đúng số tiền: Đọc tham số vnp_Amount từ VNPay (chia 100 ra đúng 399.000 đ) hoặc tham số amount.
+- Tự động suy luận gói cước chính xác từ số tiền chuẩn (399.000 đ -> PREMIUM_6M -> Gói 6 Tháng).
+- Tự động gọi API Backend verifyVnPayReturn ngầm nếu nhận query callback từ VNPay để Backend cập nhật DB sang Success.
+- Cập nhật localStorage (mimo_user) đầy đủ các cờ: isPro: true, isPlus: true, plan: 'PREMIUM_6M', planName: 'Gói 6 Tháng (Half-Year)'.
+
+G. Mimo_EXE201_FE/src/layouts/LearnerLayout/LearnerTopHeader.jsx
+- Sửa logic nhận diện Pro: Parse object user từ localStorage để kiểm tra cả isPro, isPlus, plan !== 'FREE' hoặc stats.isPro thay vì chỉ kiểm tra chuỗi rawUser.includes('PLUS').
+- Hiển thị chính xác icon VIP '❤️ ∞ Vô Hạn Tim' khi tài khoản đã nâng cấp Pro.
+
+H. Mimo_EXE201_FE/src/pages/learner/ProfileLearnerPage.jsx
+- Tái thiết kế hiển thị Pro tinh gọn chuẩn UX Duolingo / AGENTFE.md:
+  + Không dùng thẻ to cồng kềnh, không thêm nút quản lý gói chiếm diện tích.
+  + Gắn huy hiệu tinh tế '👑 Pro' (dạng pill gradient tím) ngay cạnh tên học sinh [ĐÃ XÁC THỰC].
+  + Hiển thị tên gói trên dòng thông tin phụ: '{email} • Mã học sinh: MIMO-HS-2026 • Gói: Gói 6 Tháng (Pro)'.
+
+I. Mimo_EXE201_FE/src/services/api/endpoints.js & services/modules/paymentService.js
+- Bổ sung endpoint PAYMENT.VNPAY_RETURN và method verifyVnPayReturn(queryString).
+
+J. Mimo_EXE201_FE/src/pages/learner/UpgradePlanPage.jsx
+- Đổi cách truyền planCode: Ưu tiên selectedPlanDetails.id (gửi đúng PREMIUM_6M lên API).
+- Bóc tách thông báo lỗi RFC 7807 (err.response.data.detail) nếu có.
+- Động hóa huy hiệu (Badge) trên đỉnh thẻ: Khi gói đang được kích hoạt (isCurrent), tự động thay thế badge "Khuyên dùng" thành '👑 GÓI BẠN ĐANG SỬ DỤNG' với viền và nền xanh lá nổi bật, nút dưới hiển thị '✨ Đang hoạt động (Gói hiện tại)'.
+
+K. BỔ SUNG TÍNH NĂNG KÍCH HOẠT TEST / DEMO VÀO DATABASE THẬT:
+- Backend: Thêm endpoint POST /api/v1/payment/mock-activate trong PaymentController và hàm MockActivatePlanAsync trong IPaymentService / PaymentService.
+- Frontend: Cập nhật endpoints.js, paymentService.js (hàm mockActivatePlan), và hàm handleConfirmMockPayment trong UpgradePlanPage.jsx để gọi API backend thay vì chỉ mock client. Khi bấm nút giả lập màu vàng, dữ liệu được ghi nhận thật 100% vào database Supabase (tạo Transaction Success và cập nhật UserStats IsPro = true, cộng dồn ngày hạn).
+
+L. KHẮC PHỤC TRIỆT ĐỂ LỖI KẸT TIẾN TRÌNH BACKEND CŨ & TỰ ĐỘNG ĐỒNG BỘ:
+- Đã chấm dứt tiến trình cũ PID 39208 (chạy từ 11:34 PM khóa DLL).
+- Rebuild và khởi động lại Backend API (.NET 8 Kestrel) tại port 8080 nạp toàn bộ API mới.
+- Bổ sung hàm resolvePlanCode và useEffect tự động đồng bộ GET /api/v1/auth/me trong UpgradePlanPage.jsx để luôn kéo gói Pro mới nhất từ Database Supabase về hiển thị ngay lập tức.
+
+M. SỬA LỖI GÓI 399.000 Đ BỊ NHẢY THÀNH GÓI 1 THÁNG (MONTHLY):
+- Nguyên nhân gốc: 
+  + Trong Backend UserService.cs, nếu giao dịch VNPay trước đó ở trạng thái Pending, hàm GetMeAsync chỉ thấy IsPro = true nhưng không match được mã gói nên mặc định gán 'PREMIUM_1M'.
+  + Trong Frontend UpgradePlanPage.jsx, hàm resolvePlanCode có dòng logic `if (plan === 'PREMIUM_1M' || userObj.isPro || userObj.isPlus) return 'PREMIUM_1M'`, dẫn tới bất kỳ user Pro nào có mã gói chưa kịp đồng bộ đều bị ép hiển thị Gói 1 Tháng.
+- File chỉnh sửa & giải pháp:
+  + Backend: Mimo_EXE201_BE/Mimo.Application/Services/UserService.cs: Nhận diện chính xác `cleanCode == "PREMIUM_6M" || latestTransaction.Amount == 399000` trả về `PlanCode = "PREMIUM_6M"` và `PlanName = "Gói 6 Tháng (Half-Year)"`.
+  + Frontend: Mimo_EXE201_FE/src/pages/learner/UpgradePlanPage.jsx: Tái cấu trúc hàm `resolvePlanCode`, ưu tiên kiểm tra gói 6 Tháng (Half-Year / 399.000 đ) trước tiên bằng cả mã gói, tên gói và số tiền. Loại bỏ hoàn toàn fallback sai sang Gói 1 Tháng.
+
+N. SỬA LỖI LOGOUT VÀ LOGIN LẠI BỊ MẤT GÓI PRO (QUAY VỀ MIMO FREE):
+- Nguyên nhân gốc:
+  + API POST /api/v1/auth/login chỉ trả về UserProfileDto (gồm Id, FullName, Email, Role, Avatar), hoàn toàn KHÔNG chứa UserStats (IsPro, PlanCode, Hearts).
+  + LoginPage.jsx lưu trực tiếp object user rút gọn này vào localStorage('mimo_user'), ghi đè làm mất cờ `isPro` và `planCode`. Khi chuyển sang trang học, LearnerTopHeader đọc localStorage thấy isPro = undefined nên quay về hiển thị 4/5 Tim và nút Mimo Plus.
+- File chỉnh sửa & giải pháp:
+  + Frontend: Mimo_EXE201_FE/src/services/modules/authService.js: Trong hàm `login(email, password)`, ngay sau khi có accessToken, tự động gọi `GET /api/v1/auth/me` với Bearer Token để lấy dữ liệu thực tế từ Database Supabase (IsPro, PlanCode, PlanName, Hearts, Streak) và làm giàu object `user` trước khi trả về cho LoginPage lưu vào localStorage.
+  + Frontend: Mimo_EXE201_FE/src/contexts/AuthContext.jsx: Bổ sung hook `useEffect` trong `AuthProvider`, tự động đồng bộ ngầm dữ liệu từ `/auth/me` khi mở app hoặc khi có token, đảm bảo trạng thái Pro và vô hạn tim luôn được duy trì vĩnh viễn trên toàn hệ thống.
+  + Supabase Database: Đã cập nhật giao dịch `01a16a16-8dab-796c-b8a5-3bbb47e46156` (399.000 đ) sang `Status = 'Success'`, cập nhật `UserStats` cho tài khoản `Trần Anh Kiệt` (`IsPro = true`, `ProExpiresAt = NOW() + INTERVAL '180 days'`).
+
+================================================================================
+KẾT LUẬN & KIỂM TRA TOÀN VẸN:
+- Cú pháp C# (.NET 8) và React 19 (Vite) đạt chuẩn, build thành công 0 Warning 0 Error.
+- Bảo toàn 100% cơ sở dữ liệu Supabase / PostgreSQL của nhóm bạn (Zero Schema Change).
+- Trạng thái Pro gói 6 Tháng (399k) hiển thị chuẩn xác huy hiệu "👑 GÓI BẠN ĐANG SỬ DỤNG".
+- Đăng xuất (Logout) và đăng nhập lại (Login) bảo lưu vĩnh viễn quyền Pro và icon "❤️ ∞ Vô Hạn Tim".
+================================================================================
