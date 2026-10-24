@@ -26,6 +26,9 @@ namespace Mimo.Application.Services
         private readonly IGenericRepository<UserNodeProgress> _progressRepository;
         private readonly IGenericRepository<WrongQuestion> _wrongQuestionRepository;
         private readonly IGenericRepository<XpEvent> _xpEventRepository;
+        private readonly IGenericRepository<Assignment> _assignmentRepository;
+        private readonly IGenericRepository<AssignmentProgress> _assignmentProgressRepository;
+        private readonly IGenericRepository<ClassMember> _classMemberRepository;
         private readonly IQuestionGrader _questionGrader;
         private readonly IStreakService _streakService;
         private readonly IUnitOfWork _unitOfWork;
@@ -43,6 +46,9 @@ namespace Mimo.Application.Services
             IGenericRepository<UserNodeProgress> progressRepository,
             IGenericRepository<WrongQuestion> wrongQuestionRepository,
             IGenericRepository<XpEvent> xpEventRepository,
+            IGenericRepository<Assignment> assignmentRepository,
+            IGenericRepository<AssignmentProgress> assignmentProgressRepository,
+            IGenericRepository<ClassMember> classMemberRepository,
             IQuestionGrader questionGrader,
             IStreakService streakService,
             IUnitOfWork unitOfWork,
@@ -59,13 +65,16 @@ namespace Mimo.Application.Services
             _progressRepository = progressRepository;
             _wrongQuestionRepository = wrongQuestionRepository;
             _xpEventRepository = xpEventRepository;
+            _assignmentRepository = assignmentRepository;
+            _assignmentProgressRepository = assignmentProgressRepository;
+            _classMemberRepository = classMemberRepository;
             _questionGrader = questionGrader;
             _streakService = streakService;
             _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
-        public async Task<StartLessonResponseDto> StartLessonAsync(Guid userId, Guid nodeId, CancellationToken cancellationToken = default)
+        public async Task<StartLessonResponseDto> StartLessonAsync(Guid userId, Guid nodeId, Guid? assignmentId = null, CancellationToken cancellationToken = default)
         {
             // 1. Kiểm tra tim và Lazy Heart Regeneration theo AGENT.md Section 5.1
             var stats = await _statsRepository.FirstOrDefaultAsync(s => s.UserId == userId);
@@ -102,59 +111,82 @@ namespace Mimo.Application.Services
                 throw new NotFoundException("Bài học không tồn tại hoặc chưa được xuất bản.");
             }
 
+            // Kiểm tra bài tập trường giao (nếu có)
+            bool isAssignmentMode = false;
+            if (assignmentId.HasValue)
+            {
+                var assignment = await _assignmentRepository.FirstOrDefaultAsync(a => a.Id == assignmentId.Value);
+                if (assignment == null || assignment.NodeId != nodeId)
+                {
+                    throw new BadRequestException("Bài tập không hợp lệ hoặc không khớp với bài học yêu cầu.");
+                }
+
+                var membership = await _classMemberRepository.FirstOrDefaultAsync(cm =>
+                    cm.ClassId == assignment.ClassId && cm.StudentId == userId && cm.Status == "Enrolled");
+                if (membership == null)
+                {
+                    throw new ForbiddenException("Bạn chưa tham gia lớp học được giao bài tập này.");
+                }
+
+                isAssignmentMode = true;
+            }
+
             // BUG-02 FIX: Rào cản Cây Kỹ Năng (Skill Tree Gatekeeper) - Chặn nhảy cóc qua mặt lộ trình
             var progress = await _progressRepository.FirstOrDefaultAsync(p => p.UserId == userId && p.NodeId == nodeId);
-            bool isUnlocked = false;
+            bool isUnlocked = isAssignmentMode; // Bài tập trường giao được phép vượt qua rào cản lộ trình cá nhân
 
-            if (progress != null && (string.Equals(progress.Status, "current", StringComparison.OrdinalIgnoreCase) ||
-                                     string.Equals(progress.Status, "done", StringComparison.OrdinalIgnoreCase)))
+            if (!isUnlocked)
             {
-                isUnlocked = true;
-            }
-            else
-            {
-                var unit = await _unitRepository.FirstOrDefaultAsync(u => u.Id == node.UnitId);
-                if (unit != null)
+                if (progress != null && (string.Equals(progress.Status, "current", StringComparison.OrdinalIgnoreCase) ||
+                                         string.Equals(progress.Status, "done", StringComparison.OrdinalIgnoreCase)))
                 {
-                    // Kiểm tra node liền trước trong cùng Unit
-                    var prevNodesInUnit = await _nodeRepository.WhereAsync(n =>
-                        n.UnitId == node.UnitId &&
-                        n.Order < node.Order &&
-                        n.Status == "Published");
-                    var prevNode = prevNodesInUnit.OrderByDescending(n => n.Order).FirstOrDefault();
-
-                    if (prevNode != null)
+                    isUnlocked = true;
+                }
+                else
+                {
+                    var unit = await _unitRepository.FirstOrDefaultAsync(u => u.Id == node.UnitId);
+                    if (unit != null)
                     {
-                        var prevProg = await _progressRepository.FirstOrDefaultAsync(p => p.UserId == userId && p.NodeId == prevNode.Id);
-                        isUnlocked = prevProg != null && string.Equals(prevProg.Status, "done", StringComparison.OrdinalIgnoreCase);
-                    }
-                    else
-                    {
-                        // Đây là node đầu tiên của Unit -> Kiểm tra Unit trước đó trong cùng Domain
-                        var prevUnits = await _unitRepository.WhereAsync(u => u.DomainId == unit.DomainId && u.Order < unit.Order);
-                        var prevUnit = prevUnits.OrderByDescending(u => u.Order).FirstOrDefault();
+                        // Kiểm tra node liền trước trong cùng Unit
+                        var prevNodesInUnit = await _nodeRepository.WhereAsync(n =>
+                            n.UnitId == node.UnitId &&
+                            n.Order < node.Order &&
+                            n.Status == "Published");
+                        var prevNode = prevNodesInUnit.OrderByDescending(n => n.Order).FirstOrDefault();
 
-                        if (prevUnit != null)
+                        if (prevNode != null)
                         {
-                            var lastNodesOfPrevUnit = await _nodeRepository.WhereAsync(n =>
-                                n.UnitId == prevUnit.Id &&
-                                n.Status == "Published");
-                            var lastNode = lastNodesOfPrevUnit.OrderByDescending(n => n.Order).FirstOrDefault();
-
-                            if (lastNode != null)
-                            {
-                                var lastProg = await _progressRepository.FirstOrDefaultAsync(p => p.UserId == userId && p.NodeId == lastNode.Id);
-                                isUnlocked = lastProg != null && string.Equals(lastProg.Status, "done", StringComparison.OrdinalIgnoreCase);
-                            }
-                            else
-                            {
-                                isUnlocked = true;
-                            }
+                            var prevProg = await _progressRepository.FirstOrDefaultAsync(p => p.UserId == userId && p.NodeId == prevNode.Id);
+                            isUnlocked = prevProg != null && string.Equals(prevProg.Status, "done", StringComparison.OrdinalIgnoreCase);
                         }
                         else
                         {
-                            // Là node đầu tiên của Unit đầu tiên trong Domain -> Mở khóa tự động
-                            isUnlocked = true;
+                            // Đây là node đầu tiên của Unit -> Kiểm tra Unit trước đó trong cùng Domain
+                            var prevUnits = await _unitRepository.WhereAsync(u => u.DomainId == unit.DomainId && u.Order < unit.Order);
+                            var prevUnit = prevUnits.OrderByDescending(u => u.Order).FirstOrDefault();
+
+                            if (prevUnit != null)
+                            {
+                                var lastNodesOfPrevUnit = await _nodeRepository.WhereAsync(n =>
+                                    n.UnitId == prevUnit.Id &&
+                                    n.Status == "Published");
+                                var lastNode = lastNodesOfPrevUnit.OrderByDescending(n => n.Order).FirstOrDefault();
+
+                                if (lastNode != null)
+                                {
+                                    var lastProg = await _progressRepository.FirstOrDefaultAsync(p => p.UserId == userId && p.NodeId == lastNode.Id);
+                                    isUnlocked = lastProg != null && string.Equals(lastProg.Status, "done", StringComparison.OrdinalIgnoreCase);
+                                }
+                                else
+                                {
+                                    isUnlocked = true;
+                                }
+                            }
+                            else
+                            {
+                                // Là node đầu tiên của Unit đầu tiên trong Domain -> Mở khóa tự động
+                                isUnlocked = true;
+                            }
                         }
                     }
                 }
@@ -181,6 +213,7 @@ namespace Mimo.Application.Services
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 NodeId = nodeId,
+                AssignmentId = assignmentId,
                 Status = "in_progress",
                 HeartsLost = 0,
                 TotalXpEarned = 0,
@@ -597,6 +630,92 @@ namespace Mimo.Application.Services
                 }
             }
 
+            // 4b. Xử lý bài tập trường giao (Assignment) nếu session gắn với AssignmentId
+            AssignmentResultDto? assignmentResult = null;
+            if (session.AssignmentId != null)
+            {
+                var assignment = await _assignmentRepository.FirstOrDefaultAsync(a => a.Id == session.AssignmentId.Value);
+                if (assignment != null)
+                {
+                    int correctCount = sessionAnswers.Count(sa => sa.IsCorrect);
+                    int totalQuestions = totalNodeQuestions.Count > 0 ? totalNodeQuestions.Count : 1;
+                    int score = (int)Math.Round((double)correctCount * 100 / totalQuestions);
+                    bool isLate = DateTime.UtcNow > assignment.Deadline;
+                    bool meetsThreshold = score >= assignment.PassScoreThreshold;
+
+                    var assignmentProgress = await _assignmentProgressRepository.FirstOrDefaultAsync(ap =>
+                        ap.AssignmentId == assignment.Id && ap.StudentId == userId);
+
+                    bool passedNow = false;
+                    int rewardXpEarned = 0;
+
+                    if (assignmentProgress == null)
+                    {
+                        passedNow = meetsThreshold && !isLate;
+                        if (passedNow)
+                        {
+                            rewardXpEarned = assignment.RewardXp;
+                        }
+
+                        assignmentProgress = new AssignmentProgress
+                        {
+                            AssignmentId = assignment.Id,
+                            StudentId = userId,
+                            SessionId = session.Id,
+                            BestScore = score,
+                            IsPassed = passedNow,
+                            CompletedAt = passedNow ? DateTime.UtcNow : null
+                        };
+                        await _assignmentProgressRepository.CreateAsync(assignmentProgress);
+                    }
+                    else
+                    {
+                        if (score > assignmentProgress.BestScore)
+                        {
+                            assignmentProgress.BestScore = score;
+                            assignmentProgress.SessionId = session.Id;
+                        }
+
+                        if (!assignmentProgress.IsPassed && meetsThreshold && !isLate)
+                        {
+                            assignmentProgress.IsPassed = true;
+                            assignmentProgress.CompletedAt = DateTime.UtcNow;
+                            passedNow = true;
+                            rewardXpEarned = assignment.RewardXp;
+                        }
+
+                        await _assignmentProgressRepository.UpdateAsync(assignmentProgress);
+                    }
+
+                    if (passedNow && rewardXpEarned > 0)
+                    {
+                        await _xpEventRepository.CreateAsync(new XpEvent
+                        {
+                            UserId = userId,
+                            Amount = rewardXpEarned,
+                            Source = "assignment_reward",
+                            ReferenceId = assignment.Id,
+                            CreatedAt = DateTime.UtcNow
+                        });
+
+                        if (user != null)
+                        {
+                            user.TotalXp += rewardXpEarned;
+                            await _userRepository.UpdateAsync(user);
+                        }
+                    }
+
+                    assignmentResult = new AssignmentResultDto
+                    {
+                        AssignmentId = assignment.Id,
+                        Score = score,
+                        IsPassed = assignmentProgress.IsPassed,
+                        IsLate = isLate,
+                        RewardXp = rewardXpEarned
+                    };
+                }
+            }
+
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
             // 5. Cập nhật chuỗi Streak theo IStreakService
@@ -614,7 +733,8 @@ namespace Mimo.Application.Services
                 IsPerfectLesson = isPerfectLesson,
                 PerfectBonusXp = perfectBonusXp,
                 StreakInfo = streakResult,
-                UnlockedNextNodeId = unlockedNextNodeId
+                UnlockedNextNodeId = unlockedNextNodeId,
+                AssignmentResult = assignmentResult
             };
         }
     }

@@ -24,11 +24,13 @@ export default function StudioDashboard() {
   // Bộ lọc
   const filteredScenarios = scenarios.filter((scen) => {
     const matchDomain = selectedDomain === 'ALL' || scen.domain === selectedDomain;
-    const matchStatus = selectedStatus === 'ALL' || scen.status === selectedStatus;
+    const matchStatus = selectedStatus === 'ALL' || (scen.status || '').toUpperCase() === selectedStatus;
+    const unitText = scen.unit || scen.unitTitle || '';
+    const codeText = scen.lessonCode || scen.code || '';
     const matchSearch =
-      scen.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      scen.unit.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      scen.lessonCode.toLowerCase().includes(searchQuery.toLowerCase());
+      (scen.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      unitText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      codeText.toLowerCase().includes(searchQuery.toLowerCase());
     return matchDomain && matchStatus && matchSearch;
   });
 

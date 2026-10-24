@@ -100,10 +100,10 @@ namespace Mimo.API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> StartLesson([FromRoute] Guid nodeId, CancellationToken cancellationToken)
+        public async Task<IActionResult> StartLesson([FromRoute] Guid nodeId, [FromBody] StartLessonRequestDto? request, CancellationToken cancellationToken)
         {
             var userId = GetCurrentUserId();
-            var result = await _gameplayService.StartLessonAsync(userId, nodeId, cancellationToken);
+            var result = await _gameplayService.StartLessonAsync(userId, nodeId, request?.AssignmentId, cancellationToken);
             return SuccessResp.Ok(result);
         }
     }

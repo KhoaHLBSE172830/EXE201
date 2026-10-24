@@ -39,6 +39,25 @@ public class MimoDbContext : DbContext
     public DbSet<WrongQuestion> WrongQuestions { get; set; } = null!;
     public DbSet<XpEvent> XpEvents { get; set; } = null!;
 
+    // Quests, Shop, Badges, Handbook
+    public DbSet<DailyQuest> DailyQuests { get; set; } = null!;
+    public DbSet<UserQuest> UserQuests { get; set; } = null!;
+    public DbSet<ShopItem> ShopItems { get; set; } = null!;
+    public DbSet<ShopPurchase> ShopPurchases { get; set; } = null!;
+    public DbSet<Badge> Badges { get; set; } = null!;
+    public DbSet<UserBadge> UserBadges { get; set; } = null!;
+    public DbSet<HandbookArticle> HandbookArticles { get; set; } = null!;
+
+    // B2B School & Classroom & Assignments
+    public DbSet<Class> Classes { get; set; } = null!;
+    public DbSet<ClassMember> ClassMembers { get; set; } = null!;
+    public DbSet<Assignment> Assignments { get; set; } = null!;
+    public DbSet<AssignmentProgress> AssignmentProgresses { get; set; } = null!;
+    public DbSet<TeacherLicense> TeacherLicenses { get; set; } = null!;
+
+    // Curator & Admin Reviews
+    public DbSet<QuestionFeedback> QuestionFeedbacks { get; set; } = null!;
+
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker.Entries<BaseEntity>();
@@ -271,6 +290,11 @@ public class MimoDbContext : DbContext
                   .WithMany(u => u.Nodes)
                   .HasForeignKey(n => n.UnitId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(n => n.Curator)
+                  .WithMany()
+                  .HasForeignKey(n => n.CuratorId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         // 15. Questions
@@ -326,6 +350,13 @@ public class MimoDbContext : DbContext
                   .WithMany(n => n.LessonSessions)
                   .HasForeignKey(ls => ls.NodeId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ls => ls.Assignment)
+                  .WithMany(a => a.LessonSessions)
+                  .HasForeignKey(ls => ls.AssignmentId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(ls => ls.AssignmentId);
         });
 
         // 19. SessionAnswers
@@ -370,6 +401,78 @@ public class MimoDbContext : DbContext
                   .WithMany(u => u.XpEvents)
                   .HasForeignKey(xe => xe.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 22. DailyQuests & UserQuests
+        modelBuilder.Entity<DailyQuest>(entity =>
+        {
+            entity.HasIndex(dq => dq.QuestType);
+        });
+
+        modelBuilder.Entity<UserQuest>(entity =>
+        {
+            entity.HasIndex(uq => new { uq.UserId, uq.QuestId, uq.DateKey }).IsUnique();
+
+            entity.HasOne(uq => uq.User)
+                  .WithMany(u => u.UserQuests)
+                  .HasForeignKey(uq => uq.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(uq => uq.Quest)
+                  .WithMany()
+                  .HasForeignKey(uq => uq.QuestId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 23. ShopItems & ShopPurchases
+        modelBuilder.Entity<ShopItem>(entity =>
+        {
+            entity.HasKey(si => si.Id);
+        });
+
+        modelBuilder.Entity<ShopPurchase>(entity =>
+        {
+            entity.HasIndex(sp => sp.UserId);
+
+            entity.HasOne(sp => sp.User)
+                  .WithMany(u => u.ShopPurchases)
+                  .HasForeignKey(sp => sp.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(sp => sp.ShopItem)
+                  .WithMany()
+                  .HasForeignKey(sp => sp.ItemId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 24. Badges & UserBadges
+        modelBuilder.Entity<Badge>(entity =>
+        {
+            entity.HasKey(b => b.Id);
+            entity.HasIndex(b => b.Category);
+        });
+
+        modelBuilder.Entity<UserBadge>(entity =>
+        {
+            entity.HasIndex(ub => new { ub.UserId, ub.BadgeId }).IsUnique();
+
+            entity.HasOne(ub => ub.User)
+                  .WithMany(u => u.UserBadges)
+                  .HasForeignKey(ub => ub.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ub => ub.Badge)
+                  .WithMany()
+                  .HasForeignKey(ub => ub.BadgeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 25. HandbookArticles
+        modelBuilder.Entity<HandbookArticle>(entity =>
+        {
+            entity.HasKey(ha => ha.Id);
+            entity.HasIndex(ha => ha.Pillar);
+            entity.HasIndex(ha => ha.Order);
         });
     }
 }

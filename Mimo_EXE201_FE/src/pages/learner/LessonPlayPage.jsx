@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { learnerService } from '../../services/modules/learnerService';
 import { sound, fireConfetti } from '../../utils/audioEffects';
 
@@ -62,6 +62,8 @@ const normalizeQuestions = (rawQuestions = []) => {
 export default function LessonPlayPage() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const assignmentId = searchParams.get('assignmentId');
 
   const [lessonData, setLessonData] = useState(null);
   const [sessionId, setSessionId] = useState(null);
@@ -95,7 +97,7 @@ export default function LessonPlayPage() {
 
   // Task B1: Khởi tạo phiên học từ Server
   useEffect(() => {
-    learnerService.startLesson(lessonId).then((res) => {
+    learnerService.startLesson(lessonId, assignmentId).then((res) => {
       const data = res.data || res;
       setSessionId(data.sessionId);
       if (typeof data.heartsRemaining === 'number') {
@@ -114,7 +116,7 @@ export default function LessonPlayPage() {
     }).catch((err) => {
       console.error('Không thể khởi tạo bài học:', err);
     });
-  }, [lessonId]);
+  }, [lessonId, assignmentId]);
 
   const questions = lessonData?.questions || [];
   const currentQ = questions[currentIndex];
@@ -355,12 +357,36 @@ export default function LessonPlayPage() {
             </div>
           </div>
 
+          {(assignmentId || completionData?.assignmentResult) && (
+            <div
+              style={{
+                background: '#F0F9FF',
+                border: '1.5px solid #BAE6FD',
+                borderRadius: '16px',
+                padding: '12px 16px',
+                marginBottom: '20px',
+                color: '#0369A1',
+                fontWeight: 800,
+                fontSize: '13.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                justifyContent: 'center',
+              }}
+            >
+              <span>🏫</span>
+              <span>
+                ĐÃ ĐỒNG BỘ SỔ ĐIỂM NHÀ TRƯỜNG! (Điểm: {completionData?.assignmentResult?.score ?? accuracy}%)
+              </span>
+            </div>
+          )}
+
           <button
-            onClick={() => navigate('/learn')}
+            onClick={() => navigate(assignmentId ? '/learn/classroom' : '/learn')}
             className="btn-3d btn-3d-green btn-3d-lg"
             style={{ width: '100%' }}
           >
-            TIẾP TỤC VỀ BẢN ĐỒ ➔
+            {assignmentId ? 'VỀ LỚP HỌC CỦA TÔI ➔' : 'TIẾP TỤC VỀ BẢN ĐỒ ➔'}
           </button>
         </div>
       </div>

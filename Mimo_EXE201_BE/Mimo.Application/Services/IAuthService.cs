@@ -8,6 +8,7 @@ namespace Mimo.Application.Services
     {
         Task<RegisterResponseDto> RegisterAsync(RegisterRequestDto request);
         Task<RegisterResponseDto> RegisterOrganizationAsync(OrganizationRegisterRequestDto request);
+        Task<RegisterResponseDto> RegisterCuratorAsync(CuratorRegisterRequestDto request);
         Task<AuthResponseDto> LoginAsync(LoginRequestDto request);
         Task<AuthResponseDto> GoogleLoginAsync(GoogleAuthRequestDto request);
         Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request);

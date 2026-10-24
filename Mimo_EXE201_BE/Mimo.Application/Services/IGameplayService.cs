@@ -7,7 +7,7 @@ namespace Mimo.Application.Services
 {
     public interface IGameplayService
     {
-        Task<StartLessonResponseDto> StartLessonAsync(Guid userId, Guid nodeId, CancellationToken cancellationToken = default);
+        Task<StartLessonResponseDto> StartLessonAsync(Guid userId, Guid nodeId, Guid? assignmentId = null, CancellationToken cancellationToken = default);
 
         Task<SubmitAnswerResponseDto> SubmitAnswerAsync(Guid userId, Guid sessionId, SubmitAnswerRequestDto request, string? idempotencyKey, CancellationToken cancellationToken = default);
 

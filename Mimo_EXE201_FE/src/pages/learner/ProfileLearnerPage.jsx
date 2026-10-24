@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { sound, fireConfetti } from '../../utils/audioEffects';
 import { learnerService } from '../../services/modules/learnerService';
@@ -27,6 +27,25 @@ export default function ProfileLearnerPage() {
   const [teacherCodeInput, setTeacherCodeInput] = useState('');
   const [teacherCodeError, setTeacherCodeError] = useState('');
   const [teacherSuccessData, setTeacherSuccessData] = useState(null);
+
+  const [studyStats, setStudyStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    const fetchStudyStats = async () => {
+      try {
+        setLoadingStats(true);
+        const res = await learnerService.getStudyStats();
+        const data = res?.data || res;
+        setStudyStats(data);
+      } catch (err) {
+        console.error('Lỗi khi tải thống kê học tập thật:', err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    fetchStudyStats();
+  }, []);
 
   const handleUploadAvatarFile = async (e) => {
     const file = e.target.files?.[0];
@@ -58,16 +77,18 @@ export default function ProfileLearnerPage() {
 
   const avatarChoices = ['🧑🏻', '👦🏻', '👧🏻', '🤖', '🦸🏻', '👨🏻‍🚒', '👩🏻‍⚕️', '🕵🏻'];
 
-  // Dữ liệu biểu đồ thời gian học 7 ngày qua
-  const weeklyStudyData = [
-    { day: 'T2', minutes: 25, xp: 45 },
-    { day: 'T3', minutes: 40, xp: 70 },
-    { day: 'T4', minutes: 35, xp: 60 },
-    { day: 'T5', minutes: 50, xp: 95 },
-    { day: 'T6', minutes: 45, xp: 80 },
-    { day: 'T7', minutes: 60, xp: 120 },
-    { day: 'CN', minutes: 30, xp: 50 },
-  ];
+  // Dữ liệu biểu đồ thời gian học 7 ngày qua thực tế từ Backend
+  const weeklyStudyData = studyStats?.weeklyStats?.length > 0
+    ? studyStats.weeklyStats.map((w) => ({ day: w.dayOfWeek, minutes: w.minutes, xp: w.xp }))
+    : [
+        { day: 'T2', minutes: 0, xp: 0 },
+        { day: 'T3', minutes: 0, xp: 0 },
+        { day: 'T4', minutes: 0, xp: 0 },
+        { day: 'T5', minutes: 0, xp: 0 },
+        { day: 'T6', minutes: 0, xp: 0 },
+        { day: 'T7', minutes: 0, xp: 0 },
+        { day: 'CN', minutes: 0, xp: 0 },
+      ];
 
   // Danh sách bạn học
   const studyBuddies = [
@@ -377,7 +398,7 @@ export default function ProfileLearnerPage() {
           </div>
         </div>
 
-        {/* 4 Thẻ KPI học tập */}
+        {/* 4 Thẻ KPI học tập thực tế từ Backend */}
         <div
           style={{
             display: 'grid',
@@ -388,25 +409,33 @@ export default function ProfileLearnerPage() {
         >
           <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '16px' }}>
             <div style={{ fontSize: '20px', marginBottom: '4px' }}>⏱️</div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>6h 45m</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>
+              {Math.floor((studyStats?.totalMinutesLearned || 0) / 60)}h {(studyStats?.totalMinutesLearned || 0) % 60}m
+            </div>
             <div style={{ fontSize: '12px', color: '#64748B' }}>Tổng thời lượng đã học</div>
           </div>
 
           <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '16px' }}>
             <div style={{ fontSize: '20px', marginBottom: '4px' }}>📚</div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#16A34A' }}>18 Bài</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#16A34A' }}>
+              {studyStats?.totalLessonsCompleted ?? 0} Bài
+            </div>
             <div style={{ fontSize: '12px', color: '#64748B' }}>Tình huống đã vượt qua</div>
           </div>
 
           <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '16px' }}>
-            <div style={{ fontSize: '20px', marginBottom: '4px' }}>🎯</div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#2563EB' }}>94%</div>
-            <div style={{ fontSize: '12px', color: '#64748B' }}>Đúng ngay lần đầu</div>
+            <div style={{ fontSize: '20px', marginBottom: '4px' }}>⚡</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#2563EB' }}>
+              {studyStats?.totalXp ?? user?.totalXp ?? 0} XP
+            </div>
+            <div style={{ fontSize: '12px', color: '#64748B' }}>Kinh nghiệm tích lũy</div>
           </div>
 
           <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '16px' }}>
             <div style={{ fontSize: '20px', marginBottom: '4px' }}>🔥</div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#EA580C' }}>7 Ngày</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#EA580C' }}>
+              {studyStats?.currentStreak ?? user?.streak ?? 0} Ngày
+            </div>
             <div style={{ fontSize: '12px', color: '#64748B' }}>Chuỗi học kiên trì</div>
           </div>
         </div>
@@ -418,19 +447,20 @@ export default function ProfileLearnerPage() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', height: '150px', padding: '0 10px', borderBottom: '2px solid #E2E8F0' }}>
-            {weeklyStudyData.map((d) => {
-              const heightPercent = (d.minutes / 60) * 100;
-              const isToday = d.day === 'T6';
+            {weeklyStudyData.map((d, idx) => {
+              const maxMin = Math.max(60, ...weeklyStudyData.map((x) => x.minutes));
+              const heightPercent = maxMin > 0 ? (d.minutes / maxMin) * 100 : 0;
+              const isToday = idx === weeklyStudyData.length - 1;
 
               return (
-                <div key={d.day} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flex: 1 }}>
+                <div key={d.day + idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flex: 1 }}>
                   <div style={{ fontSize: '11px', fontWeight: 800, color: isToday ? '#15803D' : '#64748B' }}>
                     {d.minutes}p
                   </div>
                   <div
                     style={{
                       width: '32px',
-                      height: `${heightPercent}%`,
+                      height: `${Math.max(6, heightPercent)}%`,
                       background: isToday
                         ? 'linear-gradient(180deg, #22C55E 0%, #15803D 100%)'
                         : '#CBD5E1',
@@ -446,6 +476,42 @@ export default function ProfileLearnerPage() {
             })}
           </div>
         </div>
+
+        {/* Biểu đồ Radar thành thạo 4 nhóm kỹ năng sống */}
+        {studyStats?.skillRadar?.length > 0 && (
+          <div style={{ marginTop: '26px', paddingTop: '22px', borderTop: '1.5px dashed #E2E8F0' }}>
+            <div style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🎯</span>
+              <span>Độ thành thục 4 nhóm kỹ năng sống (Life Skills Radar):</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+              {studyStats.skillRadar.map((radar) => (
+                <div key={radar.domainId} style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '16px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#1E293B' }}>{radar.domainName}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 900, color: '#2563EB' }}>{radar.masteryPercent}%</span>
+                  </div>
+                  <div style={{ height: '8px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${radar.masteryPercent}%`,
+                        background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 100%)',
+                        borderRadius: '4px',
+                        transition: 'width 0.5s ease',
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Đã học: {radar.completedNodes}/{radar.totalNodes} bài</span>
+                    <span>{radar.masteryPercent >= 100 ? '✅ Thành thục' : '⏳ Đang học'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 4. KÍCH HOẠT MÃ BẢN QUYỀN GIÁO VIÊN (DÀNH CHO THẦY/CÔ DO TRƯỜNG CỬ) */}

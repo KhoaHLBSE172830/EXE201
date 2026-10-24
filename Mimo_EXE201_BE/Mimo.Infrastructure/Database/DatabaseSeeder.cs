@@ -49,6 +49,8 @@ namespace Mimo.Infrastructure.Database
                 await SeedRolesAsync();
                 await SeedAdminUserAsync();
                 await SeedGameplayDataAsync();
+                await SeedGamificationDataAsync();
+                await SeedB2BClassroomsAndAssignmentsAsync();
                 await _leaderboardService.SeedMockLeaderboardUsersAsync();
             }
             catch (Exception ex)
@@ -350,6 +352,248 @@ namespace Mimo.Infrastructure.Database
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi Seeding dữ liệu Gameplay 24 tình huống: {Message}", ex.Message);
+            }
+        }
+
+        private async Task SeedGamificationDataAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Bắt đầu đồng bộ danh mục Gamification (Quests, Shop, Badges, Handbook)...");
+
+                // 1. Quests
+                var quests = GamificationSeedData.GetDailyQuests();
+                foreach (var q in quests)
+                {
+                    var existing = await _context.DailyQuests.FirstOrDefaultAsync(item => item.Id == q.Id);
+                    if (existing == null)
+                    {
+                        await _context.DailyQuests.AddAsync(q);
+                    }
+                    else
+                    {
+                        existing.Title = q.Title;
+                        existing.QuestType = q.QuestType;
+                        existing.Target = q.Target;
+                        existing.RewardType = q.RewardType;
+                        existing.RewardAmount = q.RewardAmount;
+                        existing.Icon = q.Icon;
+                        existing.IsActive = q.IsActive;
+                    }
+                }
+                await _context.SaveChangesAsync();
+
+                // 2. Shop Items
+                var shopItems = GamificationSeedData.GetShopItems();
+                foreach (var s in shopItems)
+                {
+                    var existing = await _context.ShopItems.FirstOrDefaultAsync(item => item.Id == s.Id);
+                    if (existing == null)
+                    {
+                        await _context.ShopItems.AddAsync(s);
+                    }
+                    else
+                    {
+                        existing.Title = s.Title;
+                        existing.Description = s.Description;
+                        existing.CostXp = s.CostXp;
+                        existing.Icon = s.Icon;
+                        existing.Color = s.Color;
+                        existing.BgColor = s.BgColor;
+                        existing.Status = s.Status;
+                    }
+                }
+                await _context.SaveChangesAsync();
+
+                // 3. Badges
+                var badges = GamificationSeedData.GetBadges();
+                foreach (var b in badges)
+                {
+                    var existing = await _context.Badges.FirstOrDefaultAsync(item => item.Id == b.Id);
+                    if (existing == null)
+                    {
+                        await _context.Badges.AddAsync(b);
+                    }
+                    else
+                    {
+                        existing.Title = b.Title;
+                        existing.Category = b.Category;
+                        existing.Description = b.Description;
+                        existing.Icon = b.Icon;
+                        existing.Rarity = b.Rarity;
+                        existing.CriteriaType = b.CriteriaType;
+                        existing.CriteriaValue = b.CriteriaValue;
+                    }
+                }
+                await _context.SaveChangesAsync();
+
+                // 4. Handbook Articles
+                var articles = GamificationSeedData.GetHandbookArticles();
+                foreach (var a in articles)
+                {
+                    var existing = await _context.HandbookArticles.FirstOrDefaultAsync(item => item.Id == a.Id);
+                    if (existing == null)
+                    {
+                        await _context.HandbookArticles.AddAsync(a);
+                    }
+                    else
+                    {
+                        existing.Pillar = a.Pillar;
+                        existing.Title = a.Title;
+                        existing.Badge = a.Badge;
+                        existing.ReadTime = a.ReadTime;
+                        existing.EmergencyDials = a.EmergencyDials;
+                        existing.KeyProtocol = a.KeyProtocol;
+                        existing.LegalBasis = a.LegalBasis;
+                        existing.ContentMarkdown = a.ContentMarkdown;
+                        existing.Order = a.Order;
+                    }
+                }
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Đã đồng bộ hoàn tất dữ liệu Gamification (3 Quests, 4 ShopItems, 8 Badges, 8 HandbookArticles).");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi Seeding Gamification data: {Message}", ex.Message);
+            }
+        }
+
+        private async Task SeedB2BClassroomsAndAssignmentsAsync()
+        {
+            try
+            {
+                // 1. Tạo hoặc lấy Tổ chức mẫu THPT FPT Cần Thơ
+                var org = await _context.Organizations.FirstOrDefaultAsync(o => o.Code == "FPT-CT");
+                if (org == null)
+                {
+                    org = new Organization
+                    {
+                        Name = "THPT FPT Cần Thơ",
+                        Code = "FPT-CT",
+                        Email = "fpt.cantho@fpt.edu.vn",
+                        SeatCount = 100,
+                        UsedSeats = 0,
+                        ExpirationDate = DateTime.UtcNow.AddYears(1),
+                        Status = OrganizationStatusEnum.Active,
+                        SubscriptionTier = SubscriptionTierEnum.Enterprise
+                    };
+                    await _context.Organizations.AddAsync(org);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Liên kết tài khoản B2B (d1@gmail.com / b2b_test@gmail.com) vào trường này nếu có
+                var b2bUsers = await _context.Users.Where(u => u.Email == "d1@gmail.com" || u.Email == "b2b_test@gmail.com").ToListAsync();
+                foreach (var b2bUser in b2bUsers)
+                {
+                    if (!b2bUser.OrganizationId.HasValue)
+                    {
+                        b2bUser.OrganizationId = org.Id;
+                        _context.Users.Update(b2bUser);
+                    }
+                }
+                await _context.SaveChangesAsync();
+
+                // 2. Tạo 3 lớp mẫu (FPT-K10, LHP-11B, VSC-12A) theo MyClassroomPage.jsx
+                var classFpt = await _context.Classes.FirstOrDefaultAsync(c => c.ClassCode == "FPT-K10");
+                if (classFpt == null)
+                {
+                    classFpt = new Class
+                    {
+                        OrganizationId = org.Id,
+                        Name = "Lớp 10A1 — THPT FPT Cần Thơ",
+                        ClassCode = "FPT-K10",
+                        Grade = "Khối 10",
+                        Room = "Phòng 302 - Toà Alpha",
+                        FocusTopic = "Kỹ năng PCCC & Thoát hiểm đám cháy",
+                        MaxStudents = 50,
+                        Status = "Active"
+                    };
+                    await _context.Classes.AddAsync(classFpt);
+                }
+
+                var classLhp = await _context.Classes.FirstOrDefaultAsync(c => c.ClassCode == "LHP-11B");
+                if (classLhp == null)
+                {
+                    classLhp = new Class
+                    {
+                        OrganizationId = org.Id,
+                        Name = "Lớp 11 Sinh — THPT Chuyên Lê Hồng Phong TP.HCM",
+                        ClassCode = "LHP-11B",
+                        Grade = "Khối 11",
+                        Room = "Phòng Lab Sinh học 2",
+                        FocusTopic = "Sơ cấp cứu CPR & Dị vật Heimlich",
+                        MaxStudents = 50,
+                        Status = "Active"
+                    };
+                    await _context.Classes.AddAsync(classLhp);
+                }
+
+                var classVsc = await _context.Classes.FirstOrDefaultAsync(c => c.ClassCode == "VSC-12A");
+                if (classVsc == null)
+                {
+                    classVsc = new Class
+                    {
+                        OrganizationId = org.Id,
+                        Name = "Lớp 12A3 — Vinschool Central Park",
+                        ClassCode = "VSC-12A",
+                        Grade = "Khối 12",
+                        Room = "Phòng Innovation Hub 1",
+                        FocusTopic = "An toàn thông tin & Chống lừa đảo mạng",
+                        MaxStudents = 50,
+                        Status = "Active"
+                    };
+                    await _context.Classes.AddAsync(classVsc);
+                }
+                await _context.SaveChangesAsync();
+
+                // 3. Giao bài tập mẫu trỏ vào Node Published đầu tiên
+                var publishedNode = await _context.Nodes.FirstOrDefaultAsync(n => n.Status == "Published");
+                var adminUser = await _context.Users.FirstOrDefaultAsync(u => u.RoleId == AdminRoleId);
+
+                if (publishedNode != null && adminUser != null && classFpt != null)
+                {
+                    var existingAssignment = await _context.Assignments.FirstOrDefaultAsync(a => a.ClassId == classFpt.Id && a.NodeId == publishedNode.Id);
+                    if (existingAssignment == null)
+                    {
+                        var assignment = new Assignment
+                        {
+                            ClassId = classFpt.Id,
+                            NodeId = publishedNode.Id,
+                            CreatedBy = adminUser.Id,
+                            Title = "Thực hành kỹ năng an toàn & thoát nạn khẩn cấp",
+                            Description = "Học sinh hoàn thành bài học tình huống và đạt điểm từ 80% trở lên trước hạn chót.",
+                            Deadline = DateTime.UtcNow.AddDays(7),
+                            PassScoreThreshold = 80,
+                            RewardXp = 50
+                        };
+                        await _context.Assignments.AddAsync(assignment);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
+                // 4. Tạo mã kích hoạt Giáo viên mẫu
+                var license = await _context.TeacherLicenses.FirstOrDefaultAsync(l => l.ActivationCode == "TEACH-FPT-2026");
+                if (license == null && classFpt != null)
+                {
+                    license = new TeacherLicense
+                    {
+                        OrganizationId = org.Id,
+                        ActivationCode = "TEACH-FPT-2026",
+                        Note = "Giấy phép giáo viên chủ nhiệm Khối 10",
+                        AssignedClassesJson = System.Text.Json.JsonSerializer.Serialize(new[] { classFpt.Id }),
+                        IsClaimed = false,
+                        ExpiresAt = DateTime.UtcNow.AddYears(1)
+                    };
+                    await _context.TeacherLicenses.AddAsync(license);
+                    await _context.SaveChangesAsync();
+                }
+
+                _logger.LogInformation("Đã đồng bộ hoàn tất dữ liệu Seeding B2B Classrooms & Assignments (3 lớp FPT-K10, LHP-11B, VSC-12A).");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi Seeding B2B Classroom data: {Message}", ex.Message);
             }
         }
     }

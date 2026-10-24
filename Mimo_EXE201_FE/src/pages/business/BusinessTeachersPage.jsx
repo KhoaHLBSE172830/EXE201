@@ -15,7 +15,7 @@ export default function BusinessTeachersPage() {
 
   const loadKeys = () => {
     businessService.getTeacherKeys().then((res) => {
-      if (res?.data) setKeys(res.data);
+      if (res?.data) setKeys(Array.isArray(res.data) ? res.data : []);
     });
   };
 
@@ -118,7 +118,7 @@ export default function BusinessTeachersPage() {
               </tr>
             </thead>
             <tbody>
-              {keys.map((k) => (
+              {(Array.isArray(keys) ? keys : []).map((k) => (
                 <tr key={k.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
                   <td style={{ padding: '12px 14px' }}>
                     <code
@@ -132,13 +132,18 @@ export default function BusinessTeachersPage() {
                         letterSpacing: '1px',
                       }}
                     >
-                      {k.code}
+                      {k.code || k.licenseKey}
                     </code>
                   </td>
 
                   <td style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {k.assignedClassCodes?.map((c) => (
+                      {(Array.isArray(k.assignedClassCodes)
+                        ? k.assignedClassCodes
+                        : (typeof k.assignedClassCodes === 'string'
+                            ? k.assignedClassCodes.split(',').map((s) => s.trim())
+                            : [])
+                      ).map((c) => (
                         <span
                           key={c}
                           style={{

@@ -29,6 +29,8 @@ namespace Mimo.DomainLayer.Entities
 
         public int SeatCount { get; set; } = 50;
 
+        public int UsedSeats { get; set; } = 0;
+
         public DateTime? ExpirationDate { get; set; }
 
         public OrganizationStatusEnum Status { get; set; } = OrganizationStatusEnum.Active;
@@ -43,5 +45,7 @@ namespace Mimo.DomainLayer.Entities
         }
 
         public virtual ICollection<User> Users { get; set; } = new List<User>();
+        public virtual ICollection<Class> Classes { get; set; } = new List<Class>();
+        public virtual ICollection<TeacherLicense> TeacherLicenses { get; set; } = new List<TeacherLicense>();
     }
 }

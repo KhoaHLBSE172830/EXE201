@@ -7,7 +7,10 @@ export default function BusinessSkillGapPage() {
 
   useEffect(() => {
     businessService.getSkillGapAnalysis().then((res) => {
-      if (res?.data) setSkillGaps(res.data);
+      if (res?.data) {
+        const raw = res.data;
+        setSkillGaps(Array.isArray(raw) ? raw : (raw?.domains || []));
+      }
     });
   }, []);
 
@@ -40,9 +43,9 @@ export default function BusinessSkillGapPage() {
 
       {/* DANH SÁCH LỖ HỔNG KỸ NĂNG */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-        {skillGaps.map((item, index) => (
+        {(Array.isArray(skillGaps) ? skillGaps : (skillGaps?.domains || [])).map((item, index) => (
           <div
-            key={item.id}
+            key={item.id || item.domainId || `gap_${index}`}
             className="biz-card"
             style={{
               margin: 0,
@@ -53,7 +56,7 @@ export default function BusinessSkillGapPage() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ background: '#FEE2E2', color: '#DC2626', fontWeight: 800, fontSize: '11px', padding: '2px 8px', borderRadius: '4px' }}>
-                    #{index + 1} • {item.topic}
+                    #{index + 1} • {item.topic || item.domainName || 'Kỹ năng'}
                   </span>
                   <span style={{ fontSize: '12.5px', color: '#DC2626', fontWeight: 700 }}>
                     Tỷ lệ trả lời sai toàn trường:
@@ -61,13 +64,13 @@ export default function BusinessSkillGapPage() {
                 </div>
 
                 <div style={{ fontSize: '17px', fontWeight: 800, color: '#0F172A', marginTop: '6px' }}>
-                  {item.question}
+                  {item.question || `Lỗ hổng kỹ năng: ${item.domainName || 'Chủ đề'}`}
                 </div>
               </div>
 
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '30px', fontWeight: 900, color: '#DC2626' }}>
-                  {item.failRate}%
+                  {item.failRate ?? Math.round(item.wrongRate || 0)}%
                 </div>
                 <div style={{ fontSize: '11.5px', color: '#991B1B', fontWeight: 700 }}>
                   Học sinh chưa đạt chuẩn
@@ -82,7 +85,7 @@ export default function BusinessSkillGapPage() {
                   ❌ LỖI HIỂU SAI PHỔ BIẾN NHẤT:
                 </div>
                 <div style={{ fontSize: '13px', color: '#4C0519' }}>
-                  {item.commonMistake}
+                  {item.commonMistake || `Tỷ lệ làm sai ${item.wrongRate || 0}%. Mức độ rủi ro: ${item.severity || 'Trung bình'}`}
                 </div>
               </div>
 
@@ -91,7 +94,7 @@ export default function BusinessSkillGapPage() {
                   🏫 LỚP CẦN HỖ TRỢ GẤP:
                 </div>
                 <div style={{ fontSize: '13px', color: '#78350F', fontWeight: 700 }}>
-                  {item.worstClass}
+                  {item.worstClass || 'Toàn trường'}
                 </div>
               </div>
             </div>
@@ -114,7 +117,7 @@ export default function BusinessSkillGapPage() {
               }}
             >
               <div>
-                <strong>💡 Khuyến nghị cho Giáo viên:</strong> {item.expertAdvice}
+                <strong>💡 Khuyến nghị cho Giáo viên:</strong> {item.expertAdvice || 'Tổ chức ôn tập và củng cố kiến thức cho học sinh.'}
               </div>
 
               <button
@@ -123,7 +126,7 @@ export default function BusinessSkillGapPage() {
                 style={{ padding: '6px 12px', fontSize: '12px', background: '#16A34A' }}
                 onClick={() => {
                   sound.playClick();
-                  alert(`📢 Đã gửi bài học tăng cường "${item.topic}" về cho lớp ${item.worstClass}!`);
+                  alert(`📢 Đã gửi bài học tăng cường "${item.topic || item.domainName || 'Kỹ năng'}" về cho lớp ${item.worstClass || 'Toàn trường'}!`);
                 }}
               >
                 Giao bài tập ôn gấp →

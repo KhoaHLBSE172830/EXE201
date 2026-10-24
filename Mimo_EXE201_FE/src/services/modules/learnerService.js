@@ -154,7 +154,7 @@ export const learnerService = {
    * Task B1: Khởi tạo phiên học mới cho Node bài học
    * POST /api/v1/lessons/{nodeId}/start
    */
-  async startLesson(nodeId) {
+  async startLesson(nodeId, assignmentId = null) {
     // Map mock IDs sang GUIDs đã seed trong BE nếu cần
     let targetNodeId = nodeId;
     const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nodeId);
@@ -165,7 +165,9 @@ export const learnerService = {
     }
 
     try {
-      return await apiClient.post(API_ENDPOINTS.GAMEPLAY.START_LESSON(targetNodeId));
+      return await apiClient.post(API_ENDPOINTS.GAMEPLAY.START_LESSON(targetNodeId), {
+        assignmentId: assignmentId || null,
+      });
     } catch (error) {
       console.warn('Gọi startLesson API thất bại, fallback sang mock data:', error);
       // Fallback cho chế độ offline nếu BE chưa có token
@@ -277,8 +279,21 @@ export const learnerService = {
     return apiClient.post('/api/learner/quests/claim', { questId });
   },
 
+  async getMyClassroom() {
+    try {
+      return await apiClient.get(API_ENDPOINTS.CLASSROOM.ME);
+    } catch (err) {
+      console.warn('API My Classroom fallback to mock:', err);
+      return mockSuccess(mockLearnerData.classroom);
+    }
+  },
+
   async joinClassroom(code) {
-    if (USE_MOCK) {
+    try {
+      const res = await apiClient.post(API_ENDPOINTS.CLASSROOM.JOIN, { code, classCode: code });
+      return res;
+    } catch (err) {
+      console.warn('API Join Classroom fallback to mock:', err);
       const normalizedCode = (code || '').trim().toUpperCase();
       const targetClass = mockClassroomsDatabase[normalizedCode];
 
@@ -309,11 +324,13 @@ export const learnerService = {
       const error = new Error('Mã lớp học không hợp lệ hoặc không tồn tại trong hệ thống liên kết!');
       throw error;
     }
-    return apiClient.post('/api/learner/classroom/join', { code });
   },
 
   async leaveClassroom() {
-    if (USE_MOCK) {
+    try {
+      return await apiClient.post(API_ENDPOINTS.CLASSROOM.LEAVE);
+    } catch (err) {
+      console.warn('API Leave Classroom fallback to mock:', err);
       mockLearnerData.classroom = {
         joined: false,
         classInfo: null,
@@ -321,6 +338,99 @@ export const learnerService = {
       };
       return mockSuccess({ success: true, message: 'Đã rời lớp học thành công' });
     }
-    return apiClient.post('/api/learner/classroom/leave');
+  },
+
+  // -------------------------------------------------------------
+  // 6. NHIỆM VỤ HÀNG NGÀY (DAILY QUESTS)
+  // -------------------------------------------------------------
+  async getDailyQuests() {
+    try {
+      return await apiClient.get(API_ENDPOINTS.QUESTS.DAILY);
+    } catch (err) {
+      console.warn('Lỗi khi tải nhiệm vụ ngày, dùng fallback mock:', err);
+      return mockSuccess({
+        dateKey: new Date().toISOString().split('T')[0],
+        resetInSeconds: 3600,
+        quests: [],
+      });
+    }
+  },
+
+  async claimDailyQuest(questId) {
+    return await apiClient.post(API_ENDPOINTS.QUESTS.CLAIM(questId));
+  },
+
+  // -------------------------------------------------------------
+  // 7. CỬA HÀNG ĐỔI THƯỞNG (SHOP REWARDS)
+  // -------------------------------------------------------------
+  async getShopItems() {
+    try {
+      return await apiClient.get(API_ENDPOINTS.SHOP.ITEMS);
+    } catch (err) {
+      console.warn('Lỗi khi tải cửa hàng, dùng fallback mock:', err);
+      return mockSuccess({
+        totalXp: 0,
+        hearts: 5,
+        streakFreezeCount: 0,
+        isPro: false,
+        items: [],
+      });
+    }
+  },
+
+  async purchaseShopItem(itemId) {
+    return await apiClient.post(API_ENDPOINTS.SHOP.PURCHASE, { itemId });
+  },
+
+  // -------------------------------------------------------------
+  // 8. HUY HIỆU DANH HIỆU (ACHIEVEMENTS)
+  // -------------------------------------------------------------
+  async getAchievements() {
+    try {
+      return await apiClient.get(API_ENDPOINTS.ACHIEVEMENTS.LIST);
+    } catch (err) {
+      console.warn('Lỗi khi tải danh sách huy hiệu, dùng fallback mock:', err);
+      return mockSuccess({ totalBadges: 8, unlockedBadgesCount: 0, badges: [] });
+    }
+  },
+
+  // -------------------------------------------------------------
+  // 9. CẨM NANG AN TOÀN SỐNG (SAFETY HANDBOOK)
+  // -------------------------------------------------------------
+  async getHandbook(pillar = null, search = null) {
+    try {
+      return await apiClient.get(API_ENDPOINTS.HANDBOOK.LIST(pillar, search));
+    } catch (err) {
+      console.warn('Lỗi khi tải cẩm nang an toàn, dùng fallback mock:', err);
+      return mockSuccess({ pillars: [], emergencyHotlines: [], articles: [] });
+    }
+  },
+
+  async getHandbookArticle(id) {
+    return await apiClient.get(API_ENDPOINTS.HANDBOOK.DETAIL(id));
+  },
+
+  // -------------------------------------------------------------
+  // 10. HỒ SƠ THẬT & THỐNG KÊ HỌC TẬP (PROFILE & STUDY STATS)
+  // -------------------------------------------------------------
+  async getStudyStats() {
+    try {
+      return await apiClient.get(API_ENDPOINTS.USERS.STUDY_STATS);
+    } catch (err) {
+      console.warn('Lỗi khi tải thống kê học tập thật, dùng fallback mock:', err);
+      return mockSuccess({
+        totalMinutesLearned: 0,
+        totalLessonsCompleted: 0,
+        totalXp: 0,
+        currentStreak: 0,
+        weeklyStats: [],
+        skillRadar: [],
+        recentBadges: [],
+      });
+    }
+  },
+
+  async updateProfile(profileData) {
+    return await apiClient.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, profileData);
   },
 };

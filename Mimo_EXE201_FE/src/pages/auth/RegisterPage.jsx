@@ -5,11 +5,13 @@ import { GoogleIcon, FacebookIcon, AppleIcon } from '../../components/common/Soc
 import './AuthPages.css';
 
 export default function RegisterPage() {
-  const [accountType, setAccountType] = useState('LEARNER'); // LEARNER | BUSINESS
+  const [accountType, setAccountType] = useState('LEARNER'); // LEARNER | BUSINESS | CURATOR
   const [orgName, setOrgName] = useState('');
+  const [specialization, setSpecialization] = useState('Sơ cấp cứu & Y tế khẩn cấp');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
   });
@@ -38,18 +40,36 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
+      let res;
       if (accountType === 'BUSINESS') {
-        setSuccessMsg(`Khởi tạo Không gian Doanh nghiệp cho "${orgName || 'Trường học'}" thành công!`);
-        setTimeout(() => {
-          navigate('/business');
-        }, 1200);
+        res = await authService.registerOrganization({
+          organizationName: orgName,
+          representativeName: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phoneNumber: formData.phone || null,
+        });
+      } else if (accountType === 'CURATOR') {
+        res = await authService.registerCurator({
+          fullName: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phoneNumber: formData.phone || null,
+          specialization: specialization || 'Kỹ năng an toàn sống',
+        });
       } else {
-        const res = await authService.register(formData);
-        setSuccessMsg(res?.data?.message || res?.message || 'Tạo tài khoản thành công! Đang chuyển hướng...');
-        setTimeout(() => {
-          navigate('/login');
-        }, 1500);
+        res = await authService.register({
+          fullName: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phoneNumber: formData.phone || null,
+        });
       }
+
+      setSuccessMsg(res?.data?.message || res?.message || 'Tạo tài khoản thành công! Đang chuyển hướng...');
+      setTimeout(() => {
+        navigate('/login');
+      }, 1500);
     } catch (err) {
       const serverError = err.response?.data?.error || err.response?.data?.message;
       const detailErrors = err.response?.data?.errors ? Object.values(err.response.data.errors).flat().join(', ') : '';
@@ -157,49 +177,71 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* CHỌN LOẠI TÀI KHOẢN */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '18px', background: '#F1F5F9', padding: '4px', borderRadius: '12px' }}>
+            {/* CHỌN LOẠI TÀI KHOẢN (3 TABS) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '18px', background: '#F1F5F9', padding: '4px', borderRadius: '12px' }}>
               <button
                 type="button"
                 onClick={() => setAccountType('LEARNER')}
                 style={{
-                  padding: '9px',
+                  padding: '9px 4px',
                   borderRadius: '10px',
                   border: 'none',
                   background: accountType === 'LEARNER' ? '#FFFFFF' : 'transparent',
                   color: accountType === 'LEARNER' ? '#0F172A' : '#64748B',
                   fontWeight: 800,
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   cursor: 'pointer',
                   boxShadow: accountType === 'LEARNER' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                🧑‍🎓 Học Viên Cá Nhân
+                🧑‍🎓 Học Viên
               </button>
 
               <button
                 type="button"
                 onClick={() => setAccountType('BUSINESS')}
                 style={{
-                  padding: '9px',
+                  padding: '9px 4px',
                   borderRadius: '10px',
                   border: 'none',
                   background: accountType === 'BUSINESS' ? '#0284C7' : 'transparent',
                   color: accountType === 'BUSINESS' ? '#FFFFFF' : '#64748B',
                   fontWeight: 800,
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   cursor: 'pointer',
                   boxShadow: accountType === 'BUSINESS' ? '0 2px 8px rgba(2,132,199,0.3)' : 'none',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                🏢 Trường Học / Doanh Nghiệp
+                🏢 Trường Học
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAccountType('CURATOR')}
+                style={{
+                  padding: '9px 4px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: accountType === 'CURATOR' ? '#7C3AED' : 'transparent',
+                  color: accountType === 'CURATOR' ? '#FFFFFF' : '#64748B',
+                  fontWeight: 800,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  boxShadow: accountType === 'CURATOR' ? '0 2px 8px rgba(124,58,237,0.3)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                ✍️ Tác Giả
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="auth-form">
+              {/* Trường riêng cho Trường Học / Doanh Nghiệp B2B */}
               {accountType === 'BUSINESS' && (
                 <div className="auth-field-group">
-                  <label>Tên Trường Học / Doanh Nghiệp</label>
+                  <label>Tên Trường Học / Tổ Chức B2B</label>
                   <div className="auth-input-container">
                     <span className="auth-input-icon">🏫</span>
                     <input
@@ -214,14 +256,42 @@ export default function RegisterPage() {
                 </div>
               )}
 
+              {/* Trường riêng cho Tác Giả / Chuyên Gia Curator */}
+              {accountType === 'CURATOR' && (
+                <div className="auth-field-group">
+                  <label>Lĩnh Vực Chuyên Môn / Kỹ Năng Biên Soạn</label>
+                  <div className="auth-input-container">
+                    <span className="auth-input-icon">🎓</span>
+                    <select
+                      className="auth-input"
+                      value={specialization}
+                      onChange={(e) => setSpecialization(e.target.value)}
+                      style={{ cursor: 'pointer', background: 'transparent' }}
+                    >
+                      <option value="Sơ cấp cứu & Y tế khẩn cấp">🚑 Sơ cấp cứu & Y tế khẩn cấp</option>
+                      <option value="PCCC & Kỹ năng Thoát nạn">🔥 PCCC & Kỹ năng Thoát nạn</option>
+                      <option value="An toàn giao thông đường bộ">🚦 An toàn giao thông đường bộ</option>
+                      <option value="Phòng chống bạo lực & An toàn số">🛡️ Phòng chống bạo lực & An toàn số</option>
+                      <option value="Kỹ năng sinh tồn & Sinh hoạt dã ngoại">⛺ Kỹ năng sinh tồn & Sinh hoạt dã ngoại</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div className="auth-field-group">
-                <label>{accountType === 'BUSINESS' ? 'Họ tên người đại diện (BGH / HR)' : 'Họ và tên'}</label>
+                <label>
+                  {accountType === 'BUSINESS'
+                    ? 'Họ tên người đại diện (BGH / HR)'
+                    : accountType === 'CURATOR'
+                    ? 'Họ và tên Chuyên gia / Tác giả'
+                    : 'Họ và tên học sinh'}
+                </label>
                 <div className="auth-input-container">
                   <span className="auth-input-icon">👤</span>
                   <input
                     type="text"
                     className="auth-input"
-                    placeholder="Nhập họ và tên của bạn"
+                    placeholder="Nhập họ và tên (tối thiểu 2 ký tự)"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
@@ -230,7 +300,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="auth-field-group">
-                <label>Email</label>
+                <label>Email đăng nhập</label>
                 <div className="auth-input-container">
                   <span className="auth-input-icon">✉️</span>
                   <input
@@ -240,6 +310,21 @@ export default function RegisterPage() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
+                  />
+                </div>
+              </div>
+
+              <div className="auth-field-group">
+                <label>Số điện thoại liên hệ {accountType === 'LEARNER' ? '(Tùy chọn)' : ''}</label>
+                <div className="auth-input-container">
+                  <span className="auth-input-icon">📞</span>
+                  <input
+                    type="tel"
+                    className="auth-input"
+                    placeholder="Ví dụ: 0912345678"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    required={accountType !== 'LEARNER'}
                   />
                 </div>
               </div>

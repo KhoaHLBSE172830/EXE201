@@ -231,6 +231,91 @@ namespace Mimo.Application.Services
             };
         }
 
+        public async Task<RegisterResponseDto> RegisterCuratorAsync(CuratorRegisterRequestDto request)
+        {
+            var normalizedEmail = request.Email.Trim().ToLower();
+
+            // 1. Kiểm tra Email đã tồn tại chưa
+            var existingUser = await _userRepository.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
+            if (existingUser != null)
+            {
+                throw new ConflictException("Email này đã được sử dụng trong hệ thống.");
+            }
+
+            // 2. Gán Role Curator cho tác giả kịch bản
+            var targetRoleName = "Curator";
+            var roleEntity = await _roleRepository.FirstOrDefaultAsync(r => r.RoleName.ToLower() == targetRoleName.ToLower());
+            if (roleEntity == null)
+            {
+                roleEntity = await _roleRepository.CreateAsync(new Role
+                {
+                    Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                    RoleName = targetRoleName,
+                    Description = "Giảng viên / Biên tập kịch bản bài giảng",
+                    Status = RoleStatusEnum.Active
+                });
+            }
+
+            // 3. Băm mật khẩu và tạo refresh token
+            var passwordHash = _cryptoService.HashPassword(request.Password);
+            var refreshToken = _cryptoService.GenerateRandomToken(32);
+            var userId = Guid.NewGuid();
+
+            var user = new User
+            {
+                Id = userId,
+                Name = request.FullName.Trim(),
+                UserName = normalizedEmail.Split('@')[0],
+                Email = normalizedEmail,
+                Password = passwordHash,
+                RoleId = roleEntity.Id,
+                Role = roleEntity,
+                Status = UserStatusEnum.Active,
+                Phone = request.PhoneNumber,
+                Address = request.Specialization,
+                OrganizationId = null,
+                AuthType = "Local",
+                Timezone = "Asia/Ho_Chi_Minh",
+                TotalXp = 0,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiryTime = DateTime.UtcNow.AddSeconds(JwtConst.REFRESH_TOKEN_EXP)
+            };
+
+            var createdUser = await _userRepository.CreateAsync(user);
+
+            // 4. Khởi tạo UserProfile & UserStats (Không giới hạn tim cho tác giả)
+            var profile = new UserProfile
+            {
+                UserId = createdUser.Id,
+                FullName = createdUser.Name,
+                AvatarUrl = createdUser.Avatar,
+                DailyGoalMinutes = 15
+            };
+            await _profileRepository.CreateAsync(profile);
+
+            var stats = new UserStats
+            {
+                UserId = createdUser.Id,
+                Hearts = 5,
+                HeartsUpdatedAt = DateTime.UtcNow,
+                Streak = 0,
+                StreakFreezeCount = 10,
+                IsPro = true
+            };
+            await _statsRepository.CreateAsync(stats);
+
+            return new RegisterResponseDto
+            {
+                UserId = createdUser.Id,
+                Email = createdUser.Email,
+                FullName = createdUser.Name,
+                PhoneNumber = createdUser.Phone,
+                Role = roleEntity.RoleName,
+                Message = "Đăng ký tài khoản tác giả / biên tập viên thành công! Vui lòng đăng nhập để tiếp tục.",
+                CreatedAt = createdUser.CreatedAt
+            };
+        }
+
         public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
         {
             var identifier = request.Email.Trim().ToLower();

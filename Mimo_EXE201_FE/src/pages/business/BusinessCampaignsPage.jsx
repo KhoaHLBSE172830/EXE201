@@ -17,7 +17,7 @@ export default function BusinessCampaignsPage() {
 
   const loadCampaigns = () => {
     businessService.getCampaigns().then((res) => {
-      if (res?.data) setCampaigns(res.data);
+      if (res?.data) setCampaigns(Array.isArray(res.data) ? res.data : (res.data?.items || []));
     });
   };
 
@@ -76,7 +76,7 @@ export default function BusinessCampaignsPage() {
 
       {/* DANH SÁCH CHIẾN DỊCH */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {campaigns.map((camp) => (
+        {(Array.isArray(campaigns) ? campaigns : []).map((camp) => (
           <div key={camp.id} className="biz-card" style={{ margin: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
               <div>

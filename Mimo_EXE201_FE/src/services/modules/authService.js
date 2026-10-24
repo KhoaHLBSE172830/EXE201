@@ -134,6 +134,49 @@ export const authService = {
   },
 
   /**
+   * Đăng ký Trường học / Doanh nghiệp B2B
+   */
+  async registerOrganization(formData) {
+    if (USE_MOCK) {
+      return mockSuccess({
+        message: 'Đăng ký tổ chức trường học thành công! Vui lòng đăng nhập để tiếp tục.',
+      });
+    }
+
+    const payload = {
+      organizationName: (formData.organizationName || formData.orgName || '').trim(),
+      representativeName: (formData.representativeName || formData.fullName || formData.name || '').trim(),
+      email: (formData.email || '').trim().toLowerCase(),
+      password: formData.password || '',
+      phoneNumber: formData.phoneNumber || formData.phone || null,
+      address: formData.address || null,
+    };
+
+    return apiClient.post(API_ENDPOINTS.AUTH.REGISTER_ORGANIZATION, payload);
+  },
+
+  /**
+   * Đăng ký Tác giả / Biên tập viên / Chuyên gia kịch bản (Curator)
+   */
+  async registerCurator(formData) {
+    if (USE_MOCK) {
+      return mockSuccess({
+        message: 'Đăng ký tài khoản tác giả / biên tập viên thành công! Vui lòng đăng nhập để tiếp tục.',
+      });
+    }
+
+    const payload = {
+      fullName: (formData.fullName || formData.name || '').trim(),
+      email: (formData.email || '').trim().toLowerCase(),
+      password: formData.password || '',
+      phoneNumber: formData.phoneNumber || formData.phone || null,
+      specialization: formData.specialization || null,
+    };
+
+    return apiClient.post(API_ENDPOINTS.AUTH.REGISTER_CURATOR, payload);
+  },
+
+  /**
    * Quên mật khẩu
    */
   async forgotPassword(email) {

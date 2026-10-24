@@ -60,6 +60,21 @@ namespace Mimo.API.Controllers
         }
 
         /// <summary>
+        /// Đăng ký tài khoản tác giả / chuyên gia kịch bản tình huống (Curator)
+        /// Gán quyền Curator, mở quyền truy cập Curator Studio (/studio). Trả về HTTP 201 Created.
+        /// </summary>
+        [HttpPost("register-curator")]
+        [Consumes("application/json")]
+        [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> RegisterCurator([FromBody] CuratorRegisterRequestDto request)
+        {
+            var result = await _authService.RegisterCuratorAsync(request);
+            return SuccessResp.Created(result);
+        }
+
+        /// <summary>
         /// Đăng nhập bằng Email/Username và Password
         /// </summary>
         [HttpPost("login")]
