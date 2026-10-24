@@ -2,12 +2,12 @@ name: MIMO Backend CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main", "develop", "kiet" ]
+    branches: [ "main", "develop", "kiet", "KhoaHLB23" ]
     paths:
       - 'Mimo_EXE201_BE/**'
       - '.github/workflows/backend-ci-cd.yml'
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "develop", "KhoaHLB23" ]
     paths:
       - 'Mimo_EXE201_BE/**'
   workflow_dispatch:
