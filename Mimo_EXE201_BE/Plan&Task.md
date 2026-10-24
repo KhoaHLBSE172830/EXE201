@@ -116,7 +116,7 @@ Hệ thống được chia làm 10 module (`BE0` đến `BE9`) qua 3 giai đoạ
 - **BE5-4 (3.0d):** Background Job chốt tuần 00:00 Thứ Hai: Thăng hạng (Top 1-7), Rớt hạng (Top 25-30), Thưởng Top 1-3.
 - **BE6-1..6 (14.0d):** Curator Studio: CRUD cây kỹ năng, Scenario Builder, Presigned Upload URL, Question Bank, Phê duyệt xuất bản (Gatekeeper Workflow), Phân tích chất lượng câu hỏi.
 - **BE7-1..10 (23.5d):** B2B Organization & Educator: Quản lý tổ chức, Sinh Class Code / QR, Quét QR đồng thời có khóa Concurrency, Import học sinh Excel/CSV, Assignment Center (Giao chuyên đề, deadline, ngưỡng 80%), Dashboard Risk Heatmap, Xuất báo cáo an toàn PDF/Excel, Quản lý Seat hợp đồng.
-- **BE8-1..5 (13.0d):** Super Admin: Quản trị User/RBAC 5 roles, Khôi phục Streak khi có sự cố, Cấu hình tham số gamification lưu DB có cache, Quản trị khách hàng B2B, Thống kê DAU/MAU/Retention D1-D7-D30.
+- [x] **BE8-1..5 (13.0d):** Super Admin: Quản trị User/RBAC 5 roles, Khôi phục Streak khi có sự cố, Cấu hình tham số gamification lưu DB có cache, Quản trị khách hàng B2B, Thống kê DAU/MAU/Retention D1-D7-D30, Gatekeeper duyệt học liệu (Hoàn thành & Đã kiểm thử Gateway 100%).
 
 ### Phase 3 — Doanh thu & Thông báo (15.5 ngày công)
 - **BE9-1..2 (6.5d):** Gói Mimo Pro (49k/tháng, 399k/năm), tích hợp cổng thanh toán (VNPay/PayOS), Webhook xử lý thanh toán, kích hoạt quyền vô hạn Tim.
