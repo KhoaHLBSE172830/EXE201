@@ -20,7 +20,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     adminService.getUsers()
-      .then((res) => setUsers(res.data))
+      .then((res) => setUsers(Array.isArray(res?.data) ? res.data : []))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
@@ -29,7 +29,7 @@ export default function AdminUsersPage() {
     sound.playVictory();
     fireConfetti();
     adminService.rescueUserStreak(userId).then((res) => {
-      setUsers(res.data);
+      setUsers(Array.isArray(res?.data) ? res.data : []);
       if (selectedUser?.id === userId) {
         setSelectedUser((prev) => ({ ...prev, streak: prev.maxStreak, lostStreakRecently: false }));
       }
@@ -40,7 +40,7 @@ export default function AdminUsersPage() {
   const handleRefillHearts = (userId, userName) => {
     sound.playClick();
     adminService.refillUserHearts(userId).then((res) => {
-      setUsers(res.data);
+      setUsers(Array.isArray(res?.data) ? res.data : []);
       if (selectedUser?.id === userId) {
         setSelectedUser((prev) => ({ ...prev, hearts: 5 }));
       }
@@ -51,7 +51,7 @@ export default function AdminUsersPage() {
   const handleRewardXP = (userId, userName, amount = 100) => {
     sound.playClick();
     adminService.rewardUserXP(userId, amount).then((res) => {
-      setUsers(res.data);
+      setUsers(Array.isArray(res?.data) ? res.data : []);
       if (selectedUser?.id === userId) {
         setSelectedUser((prev) => ({ ...prev, xp: prev.xp + amount }));
       }
@@ -62,7 +62,7 @@ export default function AdminUsersPage() {
   const handleToggleBan = (userId, userName) => {
     sound.playClick();
     adminService.toggleUserBan(userId).then((res) => {
-      setUsers(res.data);
+      setUsers(Array.isArray(res?.data) ? res.data : []);
       if (selectedUser?.id === userId) {
         setSelectedUser((prev) => ({ ...prev, status: prev.status === 'BANNED' ? 'ACTIVE' : 'BANNED' }));
       }
@@ -70,10 +70,13 @@ export default function AdminUsersPage() {
     });
   };
 
-  const filteredUsers = users.filter((u) => {
-    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
-    const matchPlan = filterPlan === 'ALL' || u.plan === filterPlan;
-    const matchLostStreak = !filterLostStreak || u.lostStreakRecently;
+  const userList = Array.isArray(users) ? users : [];
+  const filteredUsers = userList.filter((u) => {
+    const name = u?.name || '';
+    const email = u?.email || '';
+    const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || email.toLowerCase().includes(search.toLowerCase());
+    const matchPlan = filterPlan === 'ALL' || u?.plan === filterPlan;
+    const matchLostStreak = !filterLostStreak || u?.lostStreakRecently;
     return matchSearch && matchPlan && matchLostStreak;
   });
 
@@ -197,7 +200,7 @@ export default function AdminUsersPage() {
             }}
           >
             <span>🔥</span>
-            <span>Chỉ xem khiếu nại đứt chuỗi ({users.filter((u) => u.lostStreakRecently).length})</span>
+            <span>Chỉ xem khiếu nại đứt chuỗi ({userList.filter((u) => u?.lostStreakRecently).length})</span>
           </button>
         </div>
       </div>
@@ -224,8 +227,8 @@ export default function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.map((u) => (
-              <tr key={u.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+            {(Array.isArray(filteredUsers) ? filteredUsers : []).map((u, idx) => (
+              <tr key={u.id || `usr_${idx}`} style={{ borderBottom: '1px solid #F1F5F9' }}>
                 <td style={{ padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <img
@@ -250,16 +253,16 @@ export default function AdminUsersPage() {
                       ⚠️ Mất {u.maxStreak} ngày
                     </span>
                   ) : (
-                    <span style={{ fontWeight: 800, color: u.streak > 0 ? '#F97316' : '#94A3B8', fontSize: '13.5px' }}>
-                      🔥 {u.streak} ngày
+                    <span style={{ fontWeight: 800, color: (u?.streak || 0) > 0 ? '#F97316' : '#94A3B8', fontSize: '13.5px' }}>
+                      🔥 {u?.streak || 0} ngày
                     </span>
                   )}
                 </td>
                 <td style={{ padding: '14px 16px', fontWeight: 800, color: '#EF4444', fontSize: '13px' }}>
-                  ❤️ {u.hearts}/5
+                  ❤️ {u?.hearts ?? 5}/5
                 </td>
                 <td style={{ padding: '14px 16px', fontWeight: 800, color: '#F59E0B', fontSize: '13.5px' }}>
-                  ⭐ {u.xp.toLocaleString()}
+                  ⭐ {(u?.xp ?? 0).toLocaleString()}
                 </td>
                 <td style={{ padding: '14px 16px' }}>
                   <span style={{
@@ -482,7 +485,7 @@ export default function AdminUsersPage() {
               </div>
               <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>Tổng Điểm XP</div>
-                <div style={{ fontSize: '18px', fontWeight: 900, color: '#F59E0B' }}>⭐ {selectedUser.xp}</div>
+                <div style={{ fontSize: '18px', fontWeight: 900, color: '#F59E0B' }}>⭐ {(selectedUser?.xp ?? 0).toLocaleString()}</div>
               </div>
             </div>
 

@@ -14,7 +14,7 @@ export default function AdminFeedbackPage() {
 
   useEffect(() => {
     adminService.getFeedbacks()
-      .then((res) => setFeedbacks(res.data))
+      .then((res) => setFeedbacks(Array.isArray(res?.data) ? res.data : []))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
@@ -29,13 +29,14 @@ export default function AdminFeedbackPage() {
     sound.playVictory();
     fireConfetti();
     adminService.resolveFeedback(resolvingTicket.id, rewardXP).then((res) => {
-      setFeedbacks(res.data);
+      setFeedbacks(Array.isArray(res?.data) ? res.data : []);
       alert(`🎉 Đã xử lý thành công ticket! Hệ thống đã gửi thư cảm ơn kèm +${rewardXP} XP tri ân đến hòm thư của ${resolvingTicket.userName}.`);
       setResolvingTicket(null);
     });
   };
 
-  const filtered = feedbacks.filter((f) => filterType === 'ALL' || f.type === filterType);
+  const feedbackList = Array.isArray(feedbacks) ? feedbacks : [];
+  const filtered = feedbackList.filter((f) => filterType === 'ALL' || f?.type === filterType);
 
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '60px', color: '#64748B' }}>Đang tải trung tâm báo lỗi...</div>;
@@ -93,9 +94,9 @@ export default function AdminFeedbackPage() {
 
       {/* DANH SÁCH TICKETS */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {filtered.map((item) => (
+        {(Array.isArray(filtered) ? filtered : []).map((item, idx) => (
           <div
-            key={item.id}
+            key={item.id || `fb_${idx}`}
             style={{
               background: '#FFFFFF',
               borderRadius: '24px',

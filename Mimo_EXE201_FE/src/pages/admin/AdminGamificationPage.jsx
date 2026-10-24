@@ -9,7 +9,7 @@ export default function AdminGamificationPage() {
 
   useEffect(() => {
     adminService.getGamificationSettings()
-      .then((res) => setSettings(res.data))
+      .then((res) => setSettings(res?.data || {}))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
@@ -26,7 +26,7 @@ export default function AdminGamificationPage() {
     sound.playVictory();
     fireConfetti();
     adminService.saveGamificationSettings(settings).then((res) => {
-      setSettings(res.data);
+      setSettings(res?.data || {});
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     });
@@ -36,7 +36,7 @@ export default function AdminGamificationPage() {
     if (!window.confirm('Khôi phục toàn bộ tham số Game hóa về mặc định ban đầu của MIMO?')) return;
     sound.playClick();
     adminService.resetGamificationSettings().then((res) => {
-      setSettings(res.data);
+      setSettings(res?.data || {});
       alert('🔄 Đã khôi phục cài đặt mặc định thành công!');
     });
   };
@@ -131,7 +131,7 @@ export default function AdminGamificationPage() {
                 type="number"
                 min={1}
                 max={10}
-                value={settings.maxHearts}
+                value={settings?.maxHearts ?? 5}
                 onChange={(e) => handleChange('maxHearts', e.target.value)}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
               />
@@ -148,7 +148,7 @@ export default function AdminGamificationPage() {
                   min={30}
                   max={720}
                   step={10}
-                  value={settings.heartRefillMinutes}
+                  value={settings?.heartRefillMinutes ?? 240}
                   onChange={(e) => handleChange('heartRefillMinutes', e.target.value)}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
                 />
@@ -164,7 +164,7 @@ export default function AdminGamificationPage() {
                 type="number"
                 min={1}
                 max={10}
-                value={settings.practiceQuestionsToRefill}
+                value={settings?.practiceQuestionsToRefill ?? 3}
                 onChange={(e) => handleChange('practiceQuestionsToRefill', e.target.value)}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
               />
@@ -181,7 +181,7 @@ export default function AdminGamificationPage() {
                   min={50}
                   max={500}
                   step={10}
-                  value={settings.heartRefillPriceXP}
+                  value={settings?.heartRefillPriceXP ?? 150}
                   onChange={(e) => handleChange('heartRefillPriceXP', e.target.value)}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
                 />
@@ -220,7 +220,7 @@ export default function AdminGamificationPage() {
                 type="number"
                 min={1}
                 max={5}
-                value={settings.streakMinLessonsDaily}
+                value={settings?.streakMinLessonsDaily ?? 1}
                 onChange={(e) => handleChange('streakMinLessonsDaily', e.target.value)}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
               />
@@ -237,7 +237,7 @@ export default function AdminGamificationPage() {
                   min={100}
                   max={1000}
                   step={50}
-                  value={settings.freezePriceXP}
+                  value={settings?.freezePriceXP ?? 200}
                   onChange={(e) => handleChange('freezePriceXP', e.target.value)}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
                 />
@@ -253,7 +253,7 @@ export default function AdminGamificationPage() {
                 type="number"
                 min={1}
                 max={5}
-                value={settings.maxFreezeHolding}
+                value={settings?.maxFreezeHolding ?? 2}
                 onChange={(e) => handleChange('maxFreezeHolding', e.target.value)}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
               />
@@ -289,7 +289,7 @@ export default function AdminGamificationPage() {
               </label>
               <input
                 type="number"
-                value={settings.cohortSize}
+                value={settings?.cohortSize ?? 30}
                 onChange={(e) => handleChange('cohortSize', e.target.value)}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
               />
@@ -306,7 +306,7 @@ export default function AdminGamificationPage() {
                   type="number"
                   min={3}
                   max={10}
-                  value={settings.promotionCount}
+                  value={settings?.promotionCount ?? 5}
                   onChange={(e) => handleChange('promotionCount', e.target.value)}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
                 />
@@ -323,7 +323,7 @@ export default function AdminGamificationPage() {
                   type="number"
                   min={1}
                   max={8}
-                  value={settings.demotionCount}
+                  value={settings?.demotionCount ?? 5}
                   onChange={(e) => handleChange('demotionCount', e.target.value)}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
                 />
@@ -338,7 +338,7 @@ export default function AdminGamificationPage() {
                 <input
                   type="number"
                   step={50}
-                  value={settings.top1RewardXP}
+                  value={settings?.top1RewardXP ?? 500}
                   onChange={(e) => handleChange('top1RewardXP', e.target.value)}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, boxSizing: 'border-box' }}
                 />

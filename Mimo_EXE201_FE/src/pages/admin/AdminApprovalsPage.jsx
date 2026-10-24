@@ -29,8 +29,8 @@ export default function AdminApprovalsPage() {
   useEffect(() => {
     Promise.all([adminService.getPendingReviews(), adminService.getCurators()])
       .then(([reviewsRes, curatorsRes]) => {
-        setReviews(reviewsRes.data);
-        setCurators(curatorsRes.data);
+        setReviews(Array.isArray(reviewsRes?.data) ? reviewsRes.data : []);
+        setCurators(Array.isArray(curatorsRes?.data) ? curatorsRes.data : []);
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
@@ -40,7 +40,7 @@ export default function AdminApprovalsPage() {
     sound.playVictory();
     fireConfetti();
     adminService.approveReview(lessonId).then((res) => {
-      setReviews(res.data);
+      setReviews(Array.isArray(res?.data) ? res.data : []);
       showToast('🎉 Ký duyệt thành công! Kịch bản đã chính thức phát hành Live tới học viên toàn hệ thống.');
     });
   };
@@ -56,7 +56,7 @@ export default function AdminApprovalsPage() {
     if (!rejectReason.trim()) return;
     sound.playClick();
     adminService.rejectReview(rejectingLesson.id, rejectReason).then((res) => {
-      setReviews(res.data);
+      setReviews(Array.isArray(res?.data) ? res.data : []);
       setRejectingLesson(null);
       showToast('📩 Đã gửi phản hồi yêu cầu chỉnh sửa ngược về Curator Studio.');
     });
@@ -66,7 +66,7 @@ export default function AdminApprovalsPage() {
     if (!window.confirm('⚠️ Bạn có chắc chắn muốn TẠM KHÓA khẩn cấp bài học này để ẩn khỏi học viên?')) return;
     sound.playClick();
     adminService.rollbackReview(lessonId).then((res) => {
-      setReviews(res.data);
+      setReviews(Array.isArray(res?.data) ? res.data : []);
       showToast('⚠️ Đã tạm khóa khẩn cấp kịch bản để chờ Curator cập nhật.');
     });
   };
@@ -163,7 +163,7 @@ export default function AdminApprovalsPage() {
               boxShadow: activeTab === 'CURATORS' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
             }}
           >
-            🩺 Đội Ngũ Chuyên Gia ({curators.length})
+            🩺 Đội Ngũ Chuyên Gia ({(Array.isArray(curators) ? curators.length : 0)})
           </button>
         </div>
       </div>
@@ -171,9 +171,9 @@ export default function AdminApprovalsPage() {
       {/* TAB 1: HÀNG CHỜ PHÊ DUYỆT (PENDING REVIEW QUEUE) */}
       {activeTab === 'QUEUE' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {reviews.map((item) => (
+          {(Array.isArray(reviews) ? reviews : []).map((item, idx) => (
             <div
-              key={item.id}
+              key={item.id || `rev_${idx}`}
               style={{
                 background: '#FFFFFF',
                 borderRadius: '20px',
@@ -391,8 +391,8 @@ export default function AdminApprovalsPage() {
               </tr>
             </thead>
             <tbody>
-              {curators.map((c) => (
-                <tr key={c.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+              {(Array.isArray(curators) ? curators : []).map((c, idx) => (
+                <tr key={c.id || `cur_${idx}`} style={{ borderBottom: '1px solid #F1F5F9' }}>
                   <td style={{ padding: '14px', fontWeight: 800, color: '#0F172A' }}>
                     <div>{c.name}</div>
                     <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>{c.email}</div>
@@ -486,7 +486,7 @@ export default function AdminApprovalsPage() {
 
               {/* DANH SÁCH ĐÁP ÁN */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
-                {currentQ?.options?.map((opt, idx) => {
+                {(Array.isArray(currentQ?.options) ? currentQ.options : []).map((opt, idx) => {
                   const isSelected = selectedOption === idx;
                   const isCorrect = idx === currentQ.correctIndex;
                   let optBorder = '#E2E8F0';

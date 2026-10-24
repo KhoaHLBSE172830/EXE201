@@ -14,14 +14,21 @@ export default function AdminDashboard() {
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
 
-  useEffect(() => {
+  const loadDashboardData = () => {
     Promise.all([adminService.getAnalytics(), adminService.getSkillGaps()])
       .then(([metricsRes, gapsRes]) => {
-        setMetrics(metricsRes.data);
-        setSkillGaps(gapsRes.data);
+        if (metricsRes?.data) setMetrics(metricsRes.data);
+        if (gapsRes?.data) {
+          const raw = gapsRes.data;
+          setSkillGaps(Array.isArray(raw) ? raw : (raw?.items || []));
+        }
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadDashboardData();
   }, []);
 
   const handleOpenBroadcastModal = (gap) => {
@@ -80,7 +87,7 @@ export default function AdminDashboard() {
             type="button"
             onClick={() => {
               sound.playClick();
-              alert('🔄 Đã đồng bộ dữ liệu thời gian thực từ máy chủ!');
+              loadDashboardData();
             }}
             style={{
               background: '#FFFFFF',
@@ -119,10 +126,10 @@ export default function AdminDashboard() {
             </span>
           </div>
           <div style={{ fontSize: '28px', fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em' }}>
-            {metrics?.dau?.toLocaleString() || '3,820'}
+            {(metrics?.dau ?? 3820).toLocaleString()}
           </div>
           <div style={{ fontSize: '12px', color: '#64748B', marginTop: '6px' }}>
-            MAU: <strong>{metrics?.mau?.toLocaleString() || '18,600'}</strong> • Hệ số dính: <strong style={{ color: '#0284C7' }}>{metrics?.stickiness || 20.5}%</strong>
+            MAU: <strong>{(metrics?.mau ?? 18600).toLocaleString()}</strong> • Hệ số dính: <strong style={{ color: '#0284C7' }}>{metrics?.stickiness || 20.5}%</strong>
           </div>
         </div>
 
@@ -142,7 +149,7 @@ export default function AdminDashboard() {
             {metrics?.d7Retention || 42.8}%
           </div>
           <div style={{ fontSize: '12px', color: '#64748B', marginTop: '6px' }}>
-            D7 Retention: <strong>{metrics?.d7Retention}%</strong> • D30: <strong>{metrics?.d30Retention || 21.4}%</strong>
+            D7 Retention: <strong>{metrics?.d7Retention || 42.8}%</strong> • D30: <strong>{metrics?.d30Retention || 21.4}%</strong>
           </div>
         </div>
 
@@ -159,7 +166,7 @@ export default function AdminDashboard() {
             <span style={{ fontSize: '18px' }}>❤️</span>
           </div>
           <div style={{ fontSize: '28px', fontWeight: 900, color: '#EF4444', letterSpacing: '-0.02em' }}>
-            {metrics?.livesSaved?.toLocaleString() || '154,920'}
+            {(metrics?.livesSaved ?? 154920).toLocaleString()}
           </div>
           <div style={{ fontSize: '12px', color: '#15803D', fontWeight: 700, marginTop: '6px' }}>
             ✓ Chỉ số tác động xã hội (Impact Metric)
@@ -181,7 +188,7 @@ export default function AdminDashboard() {
             </span>
           </div>
           <div style={{ fontSize: '28px', fontWeight: 900, color: '#10B981', letterSpacing: '-0.02em' }}>
-            {(metrics?.mrr || 89500000).toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 700 }}>đ</span>
+            {(metrics?.mrr ?? 89500000).toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 700 }}>đ</span>
           </div>
           <div style={{ fontSize: '12px', color: '#64748B', marginTop: '6px' }}>
             B2C Pro (38%) + B2B Trường học (62%)
@@ -236,8 +243,8 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {skillGaps.map((gap) => (
-                <tr key={gap.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+              {(Array.isArray(skillGaps) ? skillGaps : []).map((gap, idx) => (
+                <tr key={gap.id || `gap_${idx}`} style={{ borderBottom: '1px solid #F1F5F9' }}>
                   <td style={{ padding: '14px', fontWeight: 800, color: '#0F172A', fontSize: '13.5px' }}>
                     {gap.topic}
                   </td>
