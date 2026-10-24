@@ -196,7 +196,20 @@ export default function LearnerSidebar({
               }}
             >
               {domainList.map((dom) => {
-                const isSelected = dom.id === activeDomain;
+                const isSelected = dom.id === activeDomain || dom.slug === activeDomain;
+
+                const renderIcon = () => {
+                  if (dom.iconUrl && dom.iconUrl.startsWith('http')) {
+                    return (
+                      <img
+                        src={dom.iconUrl}
+                        alt=""
+                        style={{ width: '18px', height: '18px', objectFit: 'contain' }}
+                      />
+                    );
+                  }
+                  return dom.icon || '🚑';
+                };
 
                 return (
                   <div
@@ -222,7 +235,9 @@ export default function LearnerSidebar({
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '16px' }}>{dom.icon}</span>
+                      <span style={{ fontSize: '16px', display: 'flex', alignItems: 'center' }}>
+                        {renderIcon()}
+                      </span>
                       <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
                         {dom.name}
                       </span>
@@ -232,7 +247,7 @@ export default function LearnerSidebar({
                       <span style={{ color: '#22C55E', fontWeight: 900, fontSize: '13px' }}>✓</span>
                     ) : (
                       <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600 }}>
-                        {dom.progress}%
+                        {dom.progress || 0}%
                       </span>
                     )}
                   </div>

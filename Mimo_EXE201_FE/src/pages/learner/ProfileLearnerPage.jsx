@@ -1,13 +1,25 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { sound, fireConfetti } from '../../utils/audioEffects';
+import { learnerService } from '../../services/modules/learnerService';
 import { businessService } from '../../services/modules/businessService';
 import { useNavigate } from 'react-router-dom';
 
 export default function ProfileLearnerPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [currentAvatar, setCurrentAvatar] = useState('🧑🏻');
+  const [currentAvatar, setCurrentAvatar] = useState(
+    user?.avatar && user.avatar.startsWith('http') ? (
+      <img
+        src={user.avatar}
+        alt="Avatar"
+        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+      />
+    ) : (
+      '🧑🏻'
+    )
+  );
+  const [isUploading, setIsUploading] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [fullName, setFullName] = useState(user?.name || 'Nguyễn Văn Học');
@@ -15,6 +27,34 @@ export default function ProfileLearnerPage() {
   const [teacherCodeInput, setTeacherCodeInput] = useState('');
   const [teacherCodeError, setTeacherCodeError] = useState('');
   const [teacherSuccessData, setTeacherSuccessData] = useState(null);
+
+  const handleUploadAvatarFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const res = await learnerService.uploadAvatar(file);
+      const avatarUrl = res.data?.url || res.data?.Url;
+      if (avatarUrl) {
+        sound.playVictory();
+        setCurrentAvatar(
+          <img
+            src={avatarUrl}
+            alt="Avatar"
+            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+          />
+        );
+        alert('🎉 Tải ảnh đại diện lên Supabase Storage thành công!');
+        setShowAvatarPicker(false);
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải ảnh avatar lên Supabase:', err);
+      alert('Không thể tải ảnh lên. Vui lòng kiểm tra dung lượng (tối đa 10MB) hoặc định dạng file!');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const avatarChoices = ['🧑🏻', '👦🏻', '👧🏻', '🤖', '🦸🏻', '👨🏻‍🚒', '👩🏻‍⚕️', '🕵🏻'];
 
@@ -35,6 +75,31 @@ export default function ProfileLearnerPage() {
     { id: 'sb2', name: 'Trần Phương Anh', school: 'THPT Chuyên Lê Hồng Phong', xp: 2980, avatar: '👧🏻', status: 'Học 2h trước' },
     { id: 'sb3', name: 'Lê Hoàng Bảo', school: 'THPT Lê Quý Đôn', xp: 2760, avatar: '👦🏽', status: 'Học hôm qua' },
   ];
+
+  // Lấy trạng thái gói Pro tinh gọn
+  const rawUser = localStorage.getItem('mimo_user');
+  let userPlanInfo = null;
+  try {
+    userPlanInfo = rawUser ? JSON.parse(rawUser) : null;
+  } catch (e) {}
+
+  const isProActive =
+    user?.isPro === true ||
+    userPlanInfo?.isPro === true ||
+    userPlanInfo?.isPlus === true ||
+    (userPlanInfo?.plan && userPlanInfo?.plan !== 'FREE');
+
+  const currentPlanName =
+    userPlanInfo?.planName ||
+    (userPlanInfo?.plan === 'PREMIUM_6M'
+      ? 'Gói 6 Tháng'
+      : userPlanInfo?.plan === 'PREMIUM_3M'
+      ? 'Gói 3 Tháng'
+      : userPlanInfo?.plan === 'PREMIUM_1M'
+      ? 'Gói 1 Tháng'
+      : isProActive
+      ? 'Mimo Pro'
+      : 'Mimo Free');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '960px', margin: '0 auto' }}>
@@ -143,7 +208,7 @@ export default function ProfileLearnerPage() {
           </div>
 
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', margin: 0 }}>
                 {fullName}
               </h2>
@@ -159,10 +224,34 @@ export default function ProfileLearnerPage() {
               >
                 ĐÃ XÁC THỰC
               </span>
+              {isProActive && (
+                <span
+                  style={{
+                    background: 'linear-gradient(135deg, #7C3AED, #9333EA)',
+                    color: '#FFFFFF',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    padding: '3px 10px',
+                    borderRadius: '999px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                  }}
+                  title="Học viên Mimo Pro đặc quyền vô hạn tim"
+                >
+                  👑 Pro
+                </span>
+              )}
             </div>
 
             <div style={{ fontSize: '13.5px', color: '#64748B', margin: '4px 0 10px 0' }}>
               {user?.email || 'learner@mimo.com'} • Mã học sinh: <strong>MIMO-HS-2026</strong>
+              {isProActive && (
+                <>
+                  {' '}• Gói: <strong style={{ color: '#7C3AED' }}>{currentPlanName} (Pro)</strong>
+                </>
+              )}
             </div>
 
             <p style={{ fontSize: '13px', color: '#334155', margin: 0, fontStyle: 'italic', maxWidth: '480px' }}>
@@ -229,6 +318,34 @@ export default function ProfileLearnerPage() {
               {av}
             </button>
           ))}
+
+          {/* NÚT UPLOAD ẢNH THẬT LÊN SUPABASE CLOUD STORAGE */}
+          <label
+            style={{
+              padding: '10px 16px',
+              borderRadius: '14px',
+              background: '#0EA5E9',
+              color: '#FFFFFF',
+              fontSize: '13px',
+              fontWeight: 800,
+              cursor: isUploading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 4px 12px rgba(14, 165, 233, 0.25)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>{isUploading ? '⏳ Đang tải...' : '☁️ Tải ảnh từ máy (Supabase)'}</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              style={{ display: 'none' }}
+              disabled={isUploading}
+              onChange={handleUploadAvatarFile}
+            />
+          </label>
+
           <button
             onClick={() => setShowAvatarPicker(false)}
             style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '12px', fontWeight: 700, cursor: 'pointer', marginLeft: 'auto' }}

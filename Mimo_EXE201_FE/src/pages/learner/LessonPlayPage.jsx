@@ -3,27 +3,116 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { learnerService } from '../../services/modules/learnerService';
 import { sound, fireConfetti } from '../../utils/audioEffects';
 
+// Hàm chuẩn hóa câu hỏi từ Backend DTO về cấu trúc UI đa dạng
+const normalizeQuestions = (rawQuestions = []) => {
+  return rawQuestions.map((q) => {
+    // Nếu dữ liệu đã có sẵn format UI
+    if (q.options && q.mimoDialogue) return q;
+
+    const payload = q.payload || {};
+    const type = (q.type || '').toLowerCase();
+
+    // Dạng 1: Trắc nghiệm / Tình huống (choice)
+    if (type === 'choice' || type === 'scenario_choice') {
+      return {
+        id: q.id,
+        type: 'scenario_choice',
+        question: payload.question || q.title,
+        mimoDialogue: payload.scenario || payload.audioScript || 'Hãy phân tích tình huống và đưa ra quyết định chuẩn xác nhất!',
+        mediaUrl: q.imageUrl || null,
+        options: payload.options || [],
+        difficulty: q.difficulty,
+        source: q.source,
+      };
+    }
+
+    // Dạng 2: Sắp xếp quy trình (sequence)
+    if (type === 'sequence' || type === 'sequencing' || type === 'sequencing_steps') {
+      return {
+        id: q.id,
+        type: 'sequencing_steps',
+        question: q.title,
+        mimoDialogue: payload.scenario || 'Hãy nhấn lần lượt các bước để xếp đúng quy trình chuẩn y tế!',
+        mediaUrl: q.imageUrl || null,
+        correctSequence: payload.items || [],
+        difficulty: q.difficulty,
+        source: q.source,
+      };
+    }
+
+    // Dạng 3: Điểm bất thường / Lừa đảo (red flag)
+    if (type === 'red_flag' || type === 'redflag' || type === 'spot_red_flag') {
+      return {
+        id: q.id,
+        type: 'spot_red_flag',
+        question: q.title,
+        mimoDialogue: 'Cảnh giác! Hãy tìm chi tiết có dấu hiệu lừa đảo nguy hiểm!',
+        sender: payload.smsHeader || 'Tin nhắn đáng ngờ',
+        time: 'Vừa xong',
+        messageSegments: payload.flags || [],
+        difficulty: q.difficulty,
+        source: q.source,
+      };
+    }
+
+    return q;
+  });
+};
+
 export default function LessonPlayPage() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
 
   const [lessonData, setLessonData] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hearts, setHearts] = useState(5);
+  const [isPro, setIsPro] = useState(false);
+
+  // Lựa chọn của người dùng cho từng loại câu hỏi
   const [selectedOption, setSelectedOption] = useState(null); // Cho trắc nghiệm
   const [sequenceSelected, setSequenceSelected] = useState([]); // Cho sắp xếp
   const [selectedFlag, setSelectedFlag] = useState(null); // Cho spot red flag
   const [trueFalseChoice, setTrueFalseChoice] = useState(null); // Cho đúng/sai
 
+  // Trạng thái phiên chơi
   const [feedbackStatus, setFeedbackStatus] = useState('idle'); // idle, correct, wrong
+  const [isChecking, setIsChecking] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isFailed, setIsFailed] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [shakeHeart, setShakeHeart] = useState(false);
 
+  // Phản hồi thời gian thực từ Engine Backend
+  const [currentCombo, setCurrentCombo] = useState(0);
+  const [serverExplanation, setServerExplanation] = useState('');
+  const [serverXpEarned, setServerXpEarned] = useState(10);
+  const [comboBonus, setComboBonus] = useState(0);
+  const [totalXpEarned, setTotalXpEarned] = useState(0);
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [completionData, setCompletionData] = useState(null);
+
+  // Task B1: Khởi tạo phiên học từ Server
   useEffect(() => {
-    learnerService.getLessonDetail(lessonId).then((res) => {
-      setLessonData(res.data);
+    learnerService.startLesson(lessonId).then((res) => {
+      const data = res.data || res;
+      setSessionId(data.sessionId);
+      if (typeof data.heartsRemaining === 'number') {
+        setHearts(data.heartsRemaining);
+      }
+      if (data.isPro) {
+        setIsPro(true);
+      }
+
+      const normalized = normalizeQuestions(data.questions || []);
+      setLessonData({
+        ...data,
+        questions: normalized,
+      });
+      setQuestionStartTime(Date.now());
+    }).catch((err) => {
+      console.error('Không thể khởi tạo bài học:', err);
     });
   }, [lessonId]);
 
@@ -40,7 +129,7 @@ export default function LessonPlayPage() {
         return;
       }
 
-      if (currentQ?.type === 'scenario_choice') {
+      if (currentQ?.type === 'scenario_choice' && currentQ.options) {
         if (['1', '2', '3', '4'].includes(e.key)) {
           const optIdx = parseInt(e.key, 10) - 1;
           if (currentQ.options[optIdx]) {
@@ -58,41 +147,78 @@ export default function LessonPlayPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [feedbackStatus, selectedOption, currentQ, sequenceSelected, selectedFlag, trueFalseChoice]);
 
-  // Kiểm tra đáp án
-  const handleCheck = () => {
+  // Task B2: Kiểm tra đáp án qua Engine Backend
+  const handleCheck = async () => {
     sound.init();
-    if (!currentQ) return;
+    if (!currentQ || isChecking) return;
+    setIsChecking(true);
 
-    let isCorrect = false;
+    const timeSpent = Math.max(1, Math.round((Date.now() - questionStartTime) / 1000));
+    let submittedAnswer = {};
 
     if (currentQ.type === 'scenario_choice') {
-      const chosen = currentQ.options.find((o) => o.id === selectedOption);
-      isCorrect = chosen?.isCorrect === true;
+      submittedAnswer = { selectedOptionId: selectedOption };
     } else if (currentQ.type === 'sequencing_steps') {
-      // Đúng nếu đã chọn đủ 4 bước
-      isCorrect = sequenceSelected.length === currentQ.correctSequence.length;
-    } else if (currentQ.type === 'rapid_true_false') {
-      isCorrect = trueFalseChoice === currentQ.correctAnswer;
+      submittedAnswer = { orderedItemIds: sequenceSelected };
     } else if (currentQ.type === 'spot_red_flag') {
-      const chosenSeg = currentQ.messageSegments.find((s) => s.id === selectedFlag);
-      isCorrect = chosenSeg?.isFlag === true;
+      submittedAnswer = { selectedFlagId: selectedFlag };
+    } else if (currentQ.type === 'rapid_true_false') {
+      submittedAnswer = { selectedOptionId: trueFalseChoice ? 'true' : 'false' };
     }
 
-    if (isCorrect) {
-      sound.playCorrect();
-      setFeedbackStatus('correct');
-      setCorrectCount((prev) => prev + 1);
-    } else {
+    const idempotencyKey = `${sessionId}_${currentQ.id}_${Date.now()}`;
+
+    try {
+      const res = await learnerService.submitAnswer(
+        sessionId,
+        {
+          questionId: currentQ.id,
+          submittedAnswer,
+          timeSpentSeconds: timeSpent,
+        },
+        idempotencyKey
+      );
+
+      const data = res.data || res;
+      setServerExplanation(data.explanation || '');
+      setServerXpEarned(data.xpEarned || 10);
+      setComboBonus(data.comboBonusXp || 0);
+
+      if (typeof data.heartsRemaining === 'number') {
+        setHearts(data.heartsRemaining);
+      }
+      if (typeof data.currentComboStreak === 'number') {
+        setCurrentCombo(data.currentComboStreak);
+      }
+
+      if (data.isCorrect) {
+        sound.playCorrect();
+        setFeedbackStatus('correct');
+        setCorrectCount((prev) => prev + 1);
+        setTotalXpEarned((prev) => prev + (data.xpEarned || 10));
+      } else {
+        sound.playWrong();
+        setFeedbackStatus('wrong');
+        setShakeHeart(true);
+        setTimeout(() => setShakeHeart(false), 500);
+
+        if (data.isSessionFailed || (data.heartsRemaining <= 0 && !isPro)) {
+          setIsFailed(true);
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi khi nộp câu trả lời lên server:', err);
+      // Fallback cục bộ nếu mất mạng
       sound.playWrong();
       setFeedbackStatus('wrong');
       setHearts((prev) => Math.max(0, prev - 1));
-      setShakeHeart(true);
-      setTimeout(() => setShakeHeart(false), 500);
+    } finally {
+      setIsChecking(false);
     }
   };
 
-  // Qua câu tiếp theo hoặc hoàn thành bài học
-  const handleContinue = () => {
+  // Task B4: Qua câu tiếp theo hoặc Tổng kết phiên học
+  const handleContinue = async () => {
     sound.playClick();
     if (currentIndex + 1 < questions.length && hearts > 0) {
       setCurrentIndex((prev) => prev + 1);
@@ -101,8 +227,18 @@ export default function LessonPlayPage() {
       setSelectedFlag(null);
       setTrueFalseChoice(null);
       setFeedbackStatus('idle');
+      setServerExplanation('');
+      setQuestionStartTime(Date.now());
     } else {
-      // Hoàn thành bài học!
+      // Hoàn thành phiên học: Gọi POST /sessions/{id}/complete
+      try {
+        const res = await learnerService.completeSession(sessionId);
+        const data = res.data || res;
+        setCompletionData(data);
+      } catch (err) {
+        console.warn('Lỗi khi tổng kết phiên học:', err);
+      }
+
       sound.playVictory();
       fireConfetti();
       setIsCompleted(true);
@@ -114,17 +250,20 @@ export default function LessonPlayPage() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
           <img src="/images/mascot.png" alt="Mimo Mascot" style={{ width: '56px', height: '56px', objectFit: 'contain' }} className="anim-float" />
-          <p style={{ fontWeight: 700, color: '#0EA5E9', marginTop: '12px' }}>Đang chuẩn bị tình huống khẩn cấp...</p>
+          <p style={{ fontWeight: 700, color: '#0EA5E9', marginTop: '12px' }}>Đang kết nối Gameplay Engine & tình huống khẩn cấp...</p>
         </div>
       </div>
     );
   }
 
   // =========================================================================
-  // MÀN HÌNH VICTORY CHIẾN THẮNG
+  // MÀN HÌNH VICTORY CHIẾN THẮNG (TỔNG KẾT NHÁNH B)
   // =========================================================================
   if (isCompleted) {
-    const accuracy = Math.round((correctCount / questions.length) * 100);
+    const accuracy = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100;
+    const finalXp = completionData?.totalXpEarned ?? totalXpEarned;
+    const isPerfect = completionData?.isPerfectLesson ?? (correctCount === questions.length);
+    const streakDays = completionData?.streakInfo?.streak ?? 1;
 
     return (
       <div
@@ -161,12 +300,35 @@ export default function LessonPlayPage() {
               style={{ width: '100px', height: '100px', objectFit: 'contain' }}
             />
           </div>
+
           <h1 style={{ fontSize: '28px', fontWeight: 900, color: '#15803D', margin: '0 0 6px 0' }}>
             BÀI HỌC HOÀN THÀNH!
           </h1>
-          <p style={{ color: '#64748B', fontSize: '15px', margin: '0 0 28px 0', lineHeight: 1.5 }}>
+          <p style={{ color: '#64748B', fontSize: '15px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
             Tuyệt vời! Bạn vừa trang bị thêm kỹ năng sinh tồn thực chiến để bảo vệ bản thân và người thân.
           </p>
+
+          {/* Huy hiệu Perfect Lesson nếu không mất tim nào */}
+          {isPerfect && (
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #FEF08A 0%, #FDE047 100%)',
+                border: '2px solid #EAB308',
+                borderRadius: '16px',
+                padding: '10px 16px',
+                marginBottom: '20px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#854D0E',
+                fontWeight: 800,
+                fontSize: '13.5px',
+              }}
+            >
+              <span>👑</span>
+              <span>BÀI HỌC HOÀN HẢO (+5 XP Thưởng Perfect!)</span>
+            </div>
+          )}
 
           {/* Bảng thành tích */}
           <div
@@ -178,7 +340,7 @@ export default function LessonPlayPage() {
             }}
           >
             <div style={{ background: '#FEF9C3', border: '1.5px solid #FDE047', borderRadius: '16px', padding: '14px 8px' }}>
-              <div style={{ fontSize: '22px', fontWeight: 900, color: '#B45309' }}>+15</div>
+              <div style={{ fontSize: '22px', fontWeight: 900, color: '#B45309' }}>+{finalXp}</div>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#854D0E' }}>⭐ XP KIẾM ĐƯỢC</div>
             </div>
 
@@ -188,7 +350,7 @@ export default function LessonPlayPage() {
             </div>
 
             <div style={{ background: '#FFEDD5', border: '1.5px solid #FDBA74', borderRadius: '16px', padding: '14px 8px' }}>
-              <div style={{ fontSize: '22px', fontWeight: 900, color: '#C2410C' }}>🔥 7</div>
+              <div style={{ fontSize: '22px', fontWeight: 900, color: '#C2410C' }}>🔥 {streakDays}</div>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#9A3412' }}>CHUỖI NGÀY</div>
             </div>
           </div>
@@ -558,10 +720,15 @@ export default function LessonPlayPage() {
               <div style={{ maxWidth: '540px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803D', fontWeight: 900, fontSize: '20px', marginBottom: '6px' }}>
                   <span>✅</span>
-                  <span>CHÍNH XÁC! TUYỆT VỜI! (+{currentQ.xp || 10} XP)</span>
+                  <span>CHÍNH XÁC! TUYỆT VỜI! (+{serverXpEarned} XP)</span>
+                  {comboBonus > 0 && (
+                    <span style={{ fontSize: '13px', background: '#FEF08A', color: '#854D0E', padding: '2px 8px', borderRadius: '999px', border: '1px solid #FACC15' }}>
+                      🔥 Combo +{comboBonus} XP
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: '13.5px', color: '#166534', lineHeight: 1.4 }}>
-                  {currentQ.explanation}
+                  {serverExplanation || currentQ.explanation}
                 </div>
               </div>
               <button
@@ -579,10 +746,10 @@ export default function LessonPlayPage() {
               <div style={{ maxWidth: '540px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#DC2626', fontWeight: 900, fontSize: '20px', marginBottom: '6px' }}>
                   <span>⚠️</span>
-                  <span>NGUY HIỂM! HÃY CẨN THẬN! (-1 ❤️)</span>
+                  <span>NGUY HIỂM! HÃY CẨN THẬN! {isPro ? '(🛡️ Pro: Vô hạn Tim)' : '(-1 ❤️)'}</span>
                 </div>
                 <div style={{ fontSize: '13.5px', color: '#991B1B', lineHeight: 1.4 }}>
-                  {currentQ.dangerAlert || currentQ.explanation}
+                  {serverExplanation || currentQ.dangerAlert || currentQ.explanation}
                 </div>
               </div>
               <button

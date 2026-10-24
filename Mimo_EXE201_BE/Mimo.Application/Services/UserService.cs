@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Mimo.Application.DTOs.User;
@@ -15,6 +16,7 @@ namespace Mimo.Application.Services
         private readonly IGenericRepository<User> _userRepository;
         private readonly IGenericRepository<UserProfile> _profileRepository;
         private readonly IGenericRepository<UserStats> _statsRepository;
+        private readonly IGenericRepository<Transaction> _transactionRepository;
         private readonly ICryptoService _cryptoService;
         private readonly ICacheService _cacheService;
         private readonly ILogger<UserService> _logger;
@@ -23,6 +25,7 @@ namespace Mimo.Application.Services
             IGenericRepository<User> userRepository,
             IGenericRepository<UserProfile> profileRepository,
             IGenericRepository<UserStats> statsRepository,
+            IGenericRepository<Transaction> transactionRepository,
             ICryptoService cryptoService,
             ICacheService cacheService,
             ILogger<UserService> logger)
@@ -30,6 +33,7 @@ namespace Mimo.Application.Services
             _userRepository = userRepository;
             _profileRepository = profileRepository;
             _statsRepository = statsRepository;
+            _transactionRepository = transactionRepository;
             _cryptoService = cryptoService;
             _cacheService = cacheService;
             _logger = logger;
@@ -84,6 +88,53 @@ namespace Mimo.Application.Services
                 await _statsRepository.UpdateAsync(user.Stats);
             }
 
+            // Xác định gói cước active nếu user là Pro
+            string planCode = "FREE";
+            string planName = "Mimo Free";
+
+            if (user.Stats.IsPro)
+            {
+                var transactions = await _transactionRepository.WhereAsync(
+                    t => t.UserId == userId && !string.IsNullOrEmpty(t.PlanCode));
+                
+                var latestTransaction = transactions
+                    .OrderByDescending(t => t.Status == DomainLayer.Enum.GeneralEnum.TransactionStatusEnum.Success)
+                    .ThenByDescending(t => t.CompletedAt ?? t.TransactionDate)
+                    .FirstOrDefault();
+
+                if (latestTransaction != null && !string.IsNullOrEmpty(latestTransaction.PlanCode))
+                {
+                    var cleanCode = latestTransaction.PlanCode.Trim().ToUpperInvariant();
+                    if (cleanCode.StartsWith("MIMO_")) cleanCode = cleanCode.Substring(5);
+
+                    if (cleanCode == "PREMIUM_6M" || latestTransaction.Amount == 399000)
+                    {
+                        planCode = "PREMIUM_6M";
+                        planName = "Gói 6 Tháng (Half-Year)";
+                    }
+                    else if (cleanCode == "PREMIUM_3M" || latestTransaction.Amount == 219000)
+                    {
+                        planCode = "PREMIUM_3M";
+                        planName = "Gói 3 Tháng (Quarterly)";
+                    }
+                    else if (cleanCode == "PREMIUM_1M" || latestTransaction.Amount == 79000)
+                    {
+                        planCode = "PREMIUM_1M";
+                        planName = "Gói 1 Tháng (Monthly)";
+                    }
+                    else
+                    {
+                        planCode = cleanCode;
+                        planName = "Gói Mimo Pro Nâng Cấp";
+                    }
+                }
+                else
+                {
+                    planCode = "PREMIUM_6M";
+                    planName = "Gói Mimo Pro";
+                }
+            }
+
             // Tính toán Level theo AGENT.md Section 5.3
             var levelInfo = LevelHelper.GetLevelInfo(user.TotalXp);
 
@@ -111,12 +162,14 @@ namespace Mimo.Application.Services
                 XpToNextLevel = levelInfo.XpToNextLevel,
                 LevelProgressPercent = levelInfo.ProgressPercent,
 
-                // Hearts
+                // Hearts & Pro Plan
                 Hearts = currentHearts,
                 MaxHearts = 5,
                 NextHeartInSeconds = nextHeartInSeconds,
                 IsPro = user.Stats.IsPro,
                 ProExpiresAt = user.Stats.ProExpiresAt,
+                PlanCode = planCode,
+                PlanName = planName,
 
                 // Streak
                 Streak = user.Stats.Streak,

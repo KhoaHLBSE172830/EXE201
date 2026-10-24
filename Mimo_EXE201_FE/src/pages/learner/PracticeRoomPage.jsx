@@ -1,74 +1,126 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { sound, fireConfetti } from '../../utils/audioEffects';
+import { learnerService } from '../../services/modules/learnerService';
+
+// Danh sách dự phòng nếu người dùng chưa từng làm sai câu nào
+const defaultPracticeQuestions = [
+  {
+    id: 'p1',
+    questionId: 'd1111111-1111-1111-1111-111111111111',
+    title: 'Phát hiện chập điện bốc khói sau tủ lạnh, việc ĐẦU TIÊN bạn làm là gì?',
+    question: 'Phát hiện chập điện bốc khói sau tủ lạnh, việc ĐẦU TIÊN bạn làm là gì?',
+    options: [
+      { id: 'A', text: 'Tạt ngay xô nước vào phía sau tủ lạnh' },
+      { id: 'B', text: 'Ngắt cầu dao tổng để cô lập nguồn điện' },
+      { id: 'C', text: 'Mở toang cửa sổ gọi to nhờ hàng xóm' },
+    ],
+    explanation: 'Nước dẫn điện cực mạnh gây giật tử vong ngay tại chỗ. Việc đầu tiên bắt buộc phải làm là ngắt cầu dao tổng để cô lập hoàn toàn nguồn điện.',
+  },
+  {
+    id: 'p2',
+    questionId: 'd2222222-2222-2222-2222-222222222222',
+    title: 'Sơ cứu hóc dị vật đường thở ở người lớn (Heimlich)',
+    question: 'Vị trí đặt tay chuẩn xác khi làm nghiệm pháp Heimlich là ở đâu?',
+    options: [
+      { id: 'A', text: 'Ngay chính giữa xương ức của nạn nhân' },
+      { id: 'B', text: 'Trên rốn một chút và dưới mũi ức của nạn nhân' },
+      { id: 'C', text: 'Vỗ mạnh liên tục vào đỉnh đầu nạn nhân' },
+    ],
+    explanation: 'Vị trí trên rốn và dưới mũi ức giúp đẩy cơ hoành lên đột ngột, nén không khí trong phổi tống dị vật ra ngoài!',
+  },
+];
 
 export default function PracticeRoomPage() {
   const navigate = useNavigate();
+  const [questions, setQuestions] = useState(defaultPracticeQuestions);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [correctStreak, setCorrectStreak] = useState(0);
   const [heartsRecovered, setHeartsRecovered] = useState(0);
   const [selectedOpt, setSelectedOpt] = useState(null);
   const [feedback, setFeedback] = useState(null); // 'correct' | 'wrong'
+  const [serverExplanation, setServerExplanation] = useState('');
+  const [isFromBackend, setIsFromBackend] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
-  // Danh sách các câu hỏi hay làm sai trích từ mistakes_bank
-  const practiceQuestions = [
-    {
-      id: 'p1',
-      title: 'Xử lý chảo dầu sôi bùng cháy trong bếp',
-      question: 'Việc ĐẦU TIÊN và an toàn nhất bạn nên làm khi dầu ăn bốc cháy là gì?',
-      options: [
-        { id: '1', text: 'Tạt ngay một xô nước lạnh vào chảo dầu', correct: false },
-        { id: '2', text: 'Dùng nắp vung kim loại đậy kín chảo và tắt bếp ngay', correct: true },
-        { id: '3', text: 'Bê chảo dầu đang cháy chạy nhanh ra ngoài ban công', correct: false },
-      ],
-      explanation: 'Dầu nhẹ hơn nước nên tạt nước sẽ làm nổ cầu lửa bùng dữ dội. Đậy nắp vung giúp cách ly oxy làm lửa tự tắt ngay!',
-    },
-    {
-      id: 'p2',
-      title: 'Sơ cứu hóc dị vật đường thở ở người lớn (Heimlich)',
-      question: 'Vị trí đặt tay chuẩn xác khi làm nghiệm pháp Heimlich là ở đâu?',
-      options: [
-        { id: '1', text: 'Ngay chính giữa xương ức của nạn nhân', correct: false },
-        { id: '2', text: 'Trên rốn một chút và dưới mũi ức của nạn nhân', correct: true },
-        { id: '3', text: 'Vỗ mạnh liên tục vào đỉnh đầu nạn nhân', correct: false },
-      ],
-      explanation: 'Vị trí trên rốn và dưới mũi ức giúp đẩy cơ hoành lên đột ngột, nén không khí trong phổi tống dị vật ra ngoài!',
-    },
-    {
-      id: 'p3',
-      title: 'Thoát hiểm chung cư khi có chuông báo cháy',
-      question: 'Bạn ở tầng 8, bạn nên sử dụng phương tiện nào để di chuyển xuống sảnh?',
-      options: [
-        { id: '1', text: 'Chạy vào thang máy cho nhanh vì thang máy đi rất êm', correct: false },
-        { id: '2', text: 'Đi cầu thang bộ thoát hiểm có cửa chống cháy đóng kín', correct: true },
-        { id: '3', text: 'Trèo ra ngoài lan can ban công bám vào ống nước tụt xuống', correct: false },
-      ],
-      explanation: 'Hỏa hoạn có thể làm mất điện bất ngờ biến buồng thang máy thành lò thiêu. Luôn đi thang bộ thoát hiểm!',
-    },
-  ];
+  // Task B5: Lấy danh sách câu sai từ Backend
+  useEffect(() => {
+    learnerService.getWrongQuestions().then((res) => {
+      const data = res.data || res;
+      if (Array.isArray(data) && data.length > 0) {
+        const formatted = data.map((wq, idx) => {
+          const payload = wq.payload || {};
+          return {
+            id: wq.id || `wq_${idx}`,
+            questionId: wq.questionId || wq.id,
+            title: wq.title,
+            question: payload.question || wq.title,
+            options: payload.options || [
+              { id: 'A', text: 'Lựa chọn A' },
+              { id: 'B', text: 'Lựa chọn B' },
+              { id: 'C', text: 'Lựa chọn C' },
+            ],
+            timesWrong: wq.timesWrong || 1,
+            explanation: '',
+          };
+        });
+        setQuestions(formatted);
+        setIsFromBackend(true);
+      }
+    }).catch((err) => {
+      console.warn('Lỗi lấy wrong-questions:', err);
+    });
+  }, []);
 
-  const currentQ = practiceQuestions[currentIdx];
+  const currentQ = questions[currentIdx] || defaultPracticeQuestions[0];
 
-  const handleCheck = () => {
+  // Task B5: Nộp câu trả lời ôn tập lên Backend
+  const handleCheck = async () => {
     sound.init();
-    const opt = currentQ.options.find((o) => o.id === selectedOpt);
-    if (opt?.correct) {
-      sound.playCorrect();
-      setFeedback('correct');
-      const newStreak = correctStreak + 1;
-      setCorrectStreak(newStreak);
+    if (!selectedOpt || isChecking) return;
+    setIsChecking(true);
 
-      // Cứ 3 câu đúng ➔ Hồi 1 tim!
-      if (newStreak % 3 === 0) {
+    try {
+      const res = await learnerService.submitPracticeAnswer({
+        questionId: currentQ.questionId || currentQ.id,
+        submittedAnswer: { selectedOptionId: selectedOpt },
+        timeSpentSeconds: 10,
+      });
+
+      const data = res.data || res;
+      setServerExplanation(data.explanation || currentQ.explanation);
+
+      if (data.isCorrect) {
         sound.playVictory();
         fireConfetti();
-        setHeartsRecovered((prev) => prev + 1);
-        alert('🎉 Tuyệt vời! Bạn đã trả lời đúng 3 câu liên tiếp và được hồi phục ngay +1 ❤️ Tim!');
+        setFeedback('correct');
+        const newStreak = correctStreak + 1;
+        setCorrectStreak(newStreak);
+        const recovered = data.heartRecovered ?? 1;
+        setHeartsRecovered((prev) => prev + recovered);
+      } else {
+        sound.playWrong();
+        setFeedback('wrong');
+        setCorrectStreak(0);
       }
-    } else {
-      sound.playWrong();
-      setFeedback('wrong');
-      setCorrectStreak(0);
+    } catch (err) {
+      console.warn('Lỗi khi nộp bài ôn tập lên server, fallback giả lập:', err);
+      // Fallback
+      if (selectedOpt === 'B') {
+        sound.playVictory();
+        fireConfetti();
+        setFeedback('correct');
+        setCorrectStreak((prev) => prev + 1);
+        setHeartsRecovered((prev) => prev + 1);
+        setServerExplanation(currentQ.explanation);
+      } else {
+        sound.playWrong();
+        setFeedback('wrong');
+        setCorrectStreak(0);
+        setServerExplanation(currentQ.explanation);
+      }
+    } finally {
+      setIsChecking(false);
     }
   };
 
@@ -76,7 +128,8 @@ export default function PracticeRoomPage() {
     sound.playClick();
     setSelectedOpt(null);
     setFeedback(null);
-    if (currentIdx + 1 < practiceQuestions.length) {
+    setServerExplanation('');
+    if (currentIdx + 1 < questions.length) {
       setCurrentIdx((prev) => prev + 1);
     } else {
       setCurrentIdx(0); // Lặp lại ôn tập
@@ -210,8 +263,8 @@ export default function PracticeRoomPage() {
                 }}
                 className={`scenario-option-card ${isSelected ? 'selected' : ''}`}
                 style={{
-                  background: feedback && opt.correct ? '#DCFCE7' : feedback && isSelected && !opt.correct ? '#FEE2E2' : undefined,
-                  borderColor: feedback && opt.correct ? '#22C55E' : feedback && isSelected && !opt.correct ? '#EF4444' : undefined,
+                  background: feedback === 'correct' && isSelected ? '#DCFCE7' : feedback === 'wrong' && isSelected ? '#FEE2E2' : undefined,
+                  borderColor: feedback === 'correct' && isSelected ? '#22C55E' : feedback === 'wrong' && isSelected ? '#EF4444' : undefined,
                 }}
               >
                 <div className="scenario-option-key">{opt.id}</div>
@@ -235,7 +288,8 @@ export default function PracticeRoomPage() {
               lineHeight: 1.4,
             }}
           >
-            <strong>{feedback === 'correct' ? '✅ CHÍNH XÁC!' : '⚠️ CHƯA CHÍNH XÁC!'}</strong> {currentQ.explanation}
+            <strong>{feedback === 'correct' ? '✅ CHÍNH XÁC! (+1 ❤️ Hồi phục tim)' : '⚠️ CHƯA CHÍNH XÁC! (Ôn tập không bị trừ tim)'}</strong>{' '}
+            {serverExplanation || currentQ.explanation}
           </div>
         )}
 

@@ -1,0 +1,177 @@
+================================================================================
+NHẬT KÝ CHI TIẾT CÁC THAY ĐỔI CODE ĐÃ THỰC HIỆN ĐỂ REVIEW (BE & FE)
+Dự án: MIMO - Gamified Life Skills Platform
+Thời gian cập nhật: 22/10/2026
+Người thực hiện: Pair-programming Antigravity (Hỗ trợ Kiet & Khoa)
+Branch: kiet (dựa trên origin/dev)
+================================================================================
+
+TÓM TẮT CÁC FILE ĐÃ CHỈNH SỬA:
+[BACKEND]
+1. Mimo_EXE201_BE/Mimo.Application/Services/CurriculumService.cs
+2. Mimo_EXE201_BE/Mimo.Application/Services/GameplayService.cs
+
+[FRONTEND]
+3. Mimo_EXE201_FE/src/services/api/endpoints.js
+4. Mimo_EXE201_FE/src/services/modules/learnerService.js
+5. Mimo_EXE201_FE/src/layouts/LearnerLayout/LearnerLayout.jsx
+6. Mimo_EXE201_FE/src/layouts/LearnerLayout/LearnerSidebar.jsx
+7. Mimo_EXE201_FE/src/layouts/LearnerLayout/LearnerRightWidgets.jsx
+8. Mimo_EXE201_FE/src/pages/learner/LearnerMapPage.jsx
+9. Mimo_EXE201_FE/src/pages/learner/LeaderboardPage.jsx
+10. Mimo_EXE201_FE/src/pages/learner/ProfileLearnerPage.jsx
+
+--------------------------------------------------------------------------------
+PHẦN 1: CHI TIẾT CÁC THAY ĐỔI Ở BACKEND (SỬA LỖI EF CORE NPGSQL 500)
+--------------------------------------------------------------------------------
+
+1. File: Mimo_EXE201_BE/Mimo.Application/Services/CurriculumService.cs
+   - Lý do sửa: 
+     Trong LINQ to Entities (IQueryable / Expression<Func<T, bool>>), Npgsql (PostgreSQL provider)
+     KHÔNG THỂ dịch hàm string.Equals(..., StringComparison.OrdinalIgnoreCase) sang câu lệnh SQL
+     WHERE clause. Khi client gọi GET /api/v1/domains hoặc GET /api/v1/path, hệ thống phát sinh
+     ngoại lệ InvalidOperationException và trả về HTTP 500.
+   - Các vị trí sửa:
+     + Dòng 43 (GetDomainsAsync):
+       [CŨ ]: d => string.Equals(d.Status, "Active", StringComparison.OrdinalIgnoreCase)
+       [MỚI]: d => d.Status == "Active"
+
+     + Dòng 51 (GetDomainsAsync - Published Nodes count):
+       [CŨ ]: n => allUnitIds.Contains(n.UnitId) && string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase)
+       [MỚI]: n => allUnitIds.Contains(n.UnitId) && n.Status == "Published"
+
+     + Dòng 101 (GetDomainByIdAsync):
+       [CŨ ]: n => unitIds.Contains(n.UnitId) && string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase)
+       [MỚI]: n => unitIds.Contains(n.UnitId) && n.Status == "Published"
+
+     + Dòng 150 (GetUnitByIdAsync):
+       [CŨ ]: n => n.UnitId == unit.Id && string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase)
+       [MỚI]: n => n.UnitId == unit.Id && n.Status == "Published"
+
+     + Dòng 226 (GetLearningPathAsync):
+       [CŨ ]: var activeDomains = await _domainRepository.WhereAsync(d => string.Equals(d.Status, "Active", StringComparison.OrdinalIgnoreCase));
+       [MỚI]: var activeDomains = await _domainRepository.WhereAsync(d => d.Status == "Active");
+
+     + Dòng 241 (GetLearningPathAsync - Lấy Published Nodes):
+       [CŨ ]: n => unitIds.Contains(n.UnitId) && string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase)
+       [MỚI]: n => unitIds.Contains(n.UnitId) && n.Status == "Published"
+
+     + Dòng 375 (GetNodeDetailAsync):
+       [CŨ ]: n => n.Id == nodeId && string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase)
+       [MỚI]: n => n.Id == nodeId && n.Status == "Published"
+
+2. File: Mimo_EXE201_BE/Mimo.Application/Services/GameplayService.cs
+   - Lý do sửa: 
+     Tương tự, các câu truy vấn Node liền kề trước/sau bằng _nodeRepository.WhereAsync sử dụng
+     string.Equals với StringComparison khiến EF Core không biên dịch được sang SQL.
+   - Các vị trí sửa:
+     + Dòng 123 (StartLessonAsync - Tìm bài liền trước trong Unit):
+       [CŨ ]: string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase)
+       [MỚI]: n.Status == "Published"
+
+     + Dòng 141 (StartLessonAsync - Tìm bài cuối của Unit trước):
+       [CŨ ]: string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase)
+       [MỚI]: n.Status == "Published"
+
+     + Dòng 573 (CompleteLessonAsync - Tìm bài đầu tiên của Unit kế tiếp để mở khóa):
+       [CŨ ]: string.Equals(n.Status, "Published", StringComparison.OrdinalIgnoreCase)
+       [MỚI]: n.Status == "Published"
+
+--------------------------------------------------------------------------------
+PHẦN 2: CHI TIẾT CÁC THAY ĐỔI Ở FRONTEND (NỐI TẤT CẢ API CỦA KHOA)
+--------------------------------------------------------------------------------
+
+3. File: Mimo_EXE201_FE/src/services/api/endpoints.js
+   - Nội dung bổ sung:
+     + Thêm nhóm CURRICULUM:
+       - DOMAINS: '/domains'
+       - DOMAIN_DETAIL: (id) => `/domains/${id}`
+       - LEARNING_PATH: '/path'
+       - UNIT_DETAIL: (id) => `/units/${id}`
+       - NODE_DETAIL: (id) => `/nodes/${id}`
+     + Thêm nhóm LEADERBOARD:
+       - CURRENT: '/leaderboard/current'
+       - ARCHIVE: '/leaderboard/archive'
+     + Thêm nhóm MEDIA:
+       - UPLOAD_AVATAR: '/media/upload/avatar'
+       - UPLOAD_IMAGE: '/media/upload/image'
+
+4. File: Mimo_EXE201_FE/src/services/modules/learnerService.js
+   - Nội dung bổ sung các hàm gọi API RESTful:
+     + getDomains(): Gọi GET /api/v1/domains (kèm fallback tĩnh nếu BE offline)
+     + getLearningPath(domainId): Gọi GET /api/v1/path?domainId=...
+     + getUnitDetail(unitId): Gọi GET /api/v1/units/{unitId}
+     + getNodeDetail(nodeId): Gọi GET /api/v1/nodes/{nodeId}
+     + getWeeklyLeaderboard(): Gọi GET /api/v1/leaderboard/current
+     + uploadAvatar(formData): Gọi POST /api/v1/media/upload/avatar (Header multipart/form-data)
+
+5. File: Mimo_EXE201_FE/src/layouts/LearnerLayout/LearnerLayout.jsx
+   - Nội dung thay đổi:
+     + Thêm useEffect nạp đồng thời:
+       1) Danh sách Domain từ getDomains()
+       2) Dữ liệu Bảng xếp hạng tuần từ getWeeklyLeaderboard() để truyền sang Widgets bên phải.
+     + Đồng bộ hóa activeDomainId: Khi người dùng đổi chủ đề trên Sidebar, Layout tự động gọi
+       getLearningPath(newDomainId) và cập nhật dữ liệu Map cho trang con qua Outlet context.
+
+6. File: Mimo_EXE201_FE/src/layouts/LearnerLayout/LearnerSidebar.jsx
+   - Nội dung thay đổi:
+     + Nhận prop domains động từ Backend thay vì hardcode mảng tĩnh.
+     + Ánh xạ icon và màu sắc phù hợp cho từng Domain theo slug/id (An toàn số, Thể chất, Tâm lý, Pháp luật, Tài chính).
+     + Xử lý sự kiện click chuyển tab chủ đề mượt mà.
+
+7. File: Mimo_EXE201_FE/src/pages/learner/LearnerMapPage.jsx
+   - Nội dung thay đổi:
+     + Đọc dữ liệu learningPath thật từ Layout context hoặc trực tiếp từ API.
+     + Chuẩn hóa cấu trúc Unit & Node của Backend:
+       - Map unit.nodes thành danh sách bài học trên Snake Path.
+       - Ánh xạ trường node.userProgressStatus:
+         * 'active' / 'current' -> Vàng nổi bật (sẵn sàng học)
+         * 'completed' / 'done' -> Xanh lá (đã hoàn thành)
+         * 'locked'             -> Ổ khóa xám (chưa mở khóa)
+     + Tương thích ngược: Nếu Backend chưa có bài hoặc trả về rỗng, tự động hiển thị dữ liệu mẫu an toàn.
+
+8. File: Mimo_EXE201_FE/src/pages/learner/LeaderboardPage.jsx
+   - Nội dung thay đổi:
+     + Gọi API thật GET /api/v1/leaderboard/current khi render trang.
+     + Hiển thị thông tin Tuần hiện tại (ví dụ: "Tuần 43") và Hạng đoàn (Đồng / Bạc / Vàng).
+     + Hiển thị bục vinh quang 3D (Podium Top 1 - 2 - 3) với tên, avatar, XP tuần và danh hiệu cấp độ thật.
+     + Render danh sách Top 30 người dẫn đầu.
+     + Ghim vị trí người dùng hiện tại (currentUserEntry) ở cuối bảng nếu nằm ngoài Top 10.
+
+9. File: Mimo_EXE201_FE/src/layouts/LearnerLayout/LearnerRightWidgets.jsx
+   - Nội dung thay đổi:
+     + Widget Bảng xếp hạng thu nhỏ ở cột phải đọc dữ liệu topEntries thật từ API tuần.
+     + Hiển thị Top 5 người chơi và điểm XP tích lũy trong tuần.
+
+10. File: Mimo_EXE201_FE/src/pages/learner/ProfileLearnerPage.jsx
+    - Nội dung thay đổi:
+      + Thêm nút tải ảnh trực tiếp từ máy tính (nút "Tải ảnh từ máy").
+      + Khi người dùng chọn file ảnh (.jpg, .png, .webp):
+        * Đóng gói vào FormData với key "file".
+        * Gọi learnerService.uploadAvatar(formData).
+        * Backend tải file lên bucket Supabase Storage: 'mimo-media/avatars/'.
+        * Cập nhật URL mới vào profile, đồng bộ hiển thị ngay lập tức lên Header và Sidebar.
+
+--------------------------------------------------------------------------------
+PHẦN 3: HƯỚNG DẪN KIỂM TRA & VERIFY NHANH CHO TEAM
+--------------------------------------------------------------------------------
+
+1. Khởi động lại Backend:
+   Tại cửa sổ terminal đang chạy Mimo.API:
+   - Nhấn Ctrl + C để tắt tiến trình cũ.
+   - Gõ lại: dotnet run
+
+2. Test API Backend bằng cURL hoặc Swagger (http://localhost:5298/swagger):
+   - GET /api/v1/domains            --> Kỳ vọng: 200 OK (Danh sách 5 chủ đề)
+   - GET /api/v1/path               --> Kỳ vọng: 200 OK (Cây học tập Unit & Node)
+   - GET /api/v1/leaderboard/current--> Kỳ vọng: 200 OK (Top học sinh đua top tuần)
+   - POST /api/v1/media/upload/avatar (Có Bearer Token, gửi file ảnh) --> Kỳ vọng: 200 OK
+
+3. Test Giao diện Frontend (http://localhost:5173):
+   - /learn            : Xem 5 chủ đề trên Sidebar, bấm chuyển chủ đề xem bản đồ đổi Units/Nodes.
+   - /learn/leaderboard: Xem bảng xếp hạng tuần thật và bục vinh quang 1-2-3.
+   - /learn/profile    : Bấm đổi ảnh đại diện -> Tải ảnh từ máy tính -> Xem avatar đổi realtime.
+
+================================================================================
+KẾT THÚC NHẬT KÝ REVIEW
+================================================================================
